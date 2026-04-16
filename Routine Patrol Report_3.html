@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定期巡回報告書 入力フォーム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap');
+
+  :root {
+    --ink: #1a1a2e;
+    --ink-light: #4a4a6a;
+    --accent: #2c5f8a;
+    --accent-hover: #1e4a6e;
+    --accent-light: #e8f0f7;
+    --warn: #c0392b;
+    --warn-b: #e67e22;
+    --warn-a: #27ae60;
+    --border: #c8cfd8;
+    --bg: #f4f6f9;
+    --white: #ffffff;
+    --header-bg: #1a3a5c;
+    --section-bg: #2c5f8a;
+    --row-alt: #f8fafc;
+    --shadow: 0 2px 12px rgba(26,58,92,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ===== TOP BAR ===== */
+  .top-bar {
+    background: var(--header-bg);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 3px 16px rgba(0,0,0,0.25);
+  }
+  .top-bar h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+  .top-bar .actions { display: flex; gap: 10px; }
+  .btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-primary {
+    background: #e8a020;
+    color: #1a1a2e;
+  }
+  .btn-primary:hover { background: #d4901a; transform: translateY(-1px); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+
+  .save-status {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .save-status.saved { color: #7fd4a0; }
+  .save-status.saving { color: #f0c870; }
+
+  /* ===== MAIN WRAPPER ===== */
+  .wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+
+  /* ===== CARD ===== */
+  .card {
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    /* overflow:hidden を削除 — 印刷時にBlock Formatting Contextが強制改ページを引き起こす */
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    background: var(--section-bg);
+    color: white;
+    padding: 11px 20px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 12px 12px 0 0;  /* カード上部の角丸をheaderで担う */
+  }
+  .card-header::before {
+    content: '';
+    width: 4px; height: 16px;
+    background: #e8a020;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* ===== HEADER INFO GRID ===== */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 2fr 3fr 1.2fr 1.8fr;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-cell {
+    padding: 14px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .info-cell:last-child { border-right: none; }
+  .info-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-light);
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .info-input {
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid var(--border);
+    padding: 4px 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: transparent;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .info-input:focus { border-bottom-color: var(--accent); }
+
+  /* ===== ROOM TOUR URL ===== */
+  .tour-url-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--accent-light);
+  }
+  .tour-url-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .tour-url-input {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .tour-url-input:focus { border-color: var(--accent); }
+  .tour-url-open {
+    padding: 7px 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tour-url-open:hover { background: var(--accent-hover); }
+
+  .tour-preview {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: #000;
+    position: relative;
+  }
+  .tour-preview.visible { display: block; }
+  .tour-preview iframe {
+    display: block;
+    width: 100%;
+    height: 480px;
+    border: none;
+  }
+  .tour-preview-clear {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: rgba(0,0,0,0.55);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .tour-preview-clear:hover { background: rgba(0,0,0,0.8); }
+  @media print {
+    .tour-preview { display: none !important; }
+  }
+
+  /* ===== PHOTO ENTRIES ===== */
+  .photo-section { padding: 16px 20px; }
+  .photo-entries { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .photo-entry {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* 画像ゾーン */
+  .photo-img-zone {
+    aspect-ratio: 1/1;
+    background: #e8eaf2;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative; overflow: hidden; transition: background 0.2s;
+  }
+  .photo-img-zone.has-image { cursor: zoom-in; }
+  .photo-img-zone.drag-over {
+    background: var(--accent-light);
+    outline: 3px dashed var(--accent); outline-offset: -4px;
+  }
+  .photo-img-zone img {
+    width: 100%; height: 100%; object-fit: cover;
+    position: absolute; top: 0; left: 0; display: block;
+  }
+  .photo-drop-hint {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; color: var(--ink-light); font-size: 11px;
+    z-index: 1; text-align: center; padding: 12px; pointer-events: none;
+  }
+  .photo-drop-hint svg { opacity: 0.4; }
+  .photo-img-file { display: none; }
+
+  /* ===== HOVER PREVIEW ===== */
+  #photo-hover-preview {
+    position: fixed;
+    z-index: 9999;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.92);
+    background: #000;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+    max-width: 80vw;
+    max-height: 80vh;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    cursor: zoom-out;
+  }
+  #photo-hover-preview.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  #photo-hover-preview img {
+    display: block;
+    max-width: 80vw;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+  #photo-preview-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0,0,0,0.45);
+    cursor: zoom-out;
+  }
+  #photo-preview-backdrop.visible { display: block; }
+  @media print { #photo-hover-preview { display: none !important; } }
+
+  /* 情報パネル */
+  .photo-panel {
+    background: var(--white); border-left: 1.5px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .photo-panel-header {
+    background: var(--ink-light); color: #fff;
+    padding: 5px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .photo-no-badge { font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .photo-drag-handle {
+    cursor: grab; background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 16px; padding: 0 4px 0 0; line-height: 1;
+    display: flex; align-items: center; user-select: none; flex-shrink: 0;
+  }
+  .photo-drag-handle:hover { color: #fff; }
+  .photo-drag-handle:active { cursor: grabbing; }
+  .photo-entry.is-dragging { opacity: 0.35; box-shadow: none; }
+  .photo-entry.drop-before { border-top: 3px solid var(--accent); }
+  .photo-entry.drop-after  { border-bottom: 3px solid var(--accent); }
+  .photo-panel-header-label { font-size: 11px; font-weight: 500; flex: 1; letter-spacing: 0.04em; }
+  .photo-move-row {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 10px; flex-shrink: 0;
+    background: rgba(0,0,0,0.18); border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .photo-move-label { font-size: 10px; color: rgba(255,255,255,0.75); white-space: nowrap; }
+  .photo-move-sel {
+    flex: 1; font-size: 11px; padding: 2px 4px; border-radius: 4px; min-width: 0;
+    border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15);
+    color: #fff; font-family: 'Noto Sans JP', sans-serif; outline: none;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  }
+  .photo-move-sel option { background: #1a3a5c; color: #fff; }
+  .photo-move-btn {
+    font-size: 10px; white-space: nowrap; padding: 3px 7px; flex-shrink: 0;
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35);
+    color: #fff; border-radius: 4px; cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif; transition: background 0.15s;
+  }
+  .photo-move-btn:hover { background: rgba(255,255,255,0.35); }
+  .photo-panel-body {
+    flex: 1; display: flex; flex-direction: column;
+    padding: 10px 12px; gap: 8px;
+  }
+  .photo-field-row {
+    display: flex; flex-direction: column; gap: 4px;
+    background: #f8fafc; border-radius: 6px; padding: 7px 9px;
+    border: 1px solid #e2e8f0;
+  }
+  .photo-field-label {
+    font-size: 10px; color: var(--accent); font-weight: 700;
+    letter-spacing: 0.06em; display: flex; align-items: center; gap: 4px;
+  }
+  .photo-field-input {
+    border: none; outline: none; font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px; color: var(--ink); background: transparent;
+    width: 100%; padding: 2px 0; resize: vertical; line-height: 1.6; min-height: 22px;
+  }
+  .photo-field-input:focus { background: #eef4ff; border-radius: 3px; padding: 2px 4px; }
+  .photo-field-input::placeholder { color: #c4c9d4; }
+  .photo-slot-del {
+    margin-top: auto;
+    width: 100%; background: none; border: 1px dashed #ccc; border-radius: 6px;
+    padding: 5px 0; font-family: 'Noto Sans JP', sans-serif;
+    font-size: 11px; color: #aaa; cursor: pointer; transition: all 0.15s;
+  }
+  .photo-slot-del:hover { border-color: var(--warn); color: var(--warn); background: #fce8e8; }
+
+  /* ===== INSPECTION TABLE ===== */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  thead tr { background: #edf2f7; }
+  th {
+    padding: 9px 8px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    font-size: 11.5px;
+  }
+  td {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:nth-child(even) td { background: var(--row-alt); }
+
+  .section-row td {
+    background: #dce8f5 !important;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+  }
+  .section-row .section-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-row .section-input {
+    background: transparent;
+    border: 1.5px solid transparent;
+    border-radius: 5px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    flex: 1;
+    outline: none;
+    padding: 3px 6px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .section-row .section-input:hover {
+    border-color: rgba(44,95,138,0.3);
+    background: rgba(255,255,255,0.5);
+  }
+  .section-row .section-input:focus {
+    border-color: var(--accent);
+    background: white;
+  }
+  .del-section-btn {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    opacity: 0.5;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .del-section-btn:hover { color: var(--warn); background: #fce8e8; opacity: 1; }
+
+  td input[type=text], td textarea {
+    width: 100%;
+    border: 1.5px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12.5px;
+    color: var(--ink);
+    outline: none;
+    resize: none;
+    padding: 2px 4px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  td input[type=text]:hover, td textarea:hover {
+    border-color: rgba(44,95,138,0.25);
+    background: rgba(255,255,255,0.7);
+  }
+  td input[type=text]:focus, td textarea:focus {
+    border-color: var(--accent);
+    background: white;
+  }
+  td textarea {
+    min-height: 34px;
+    line-height: 1.55;
+    overflow: hidden;
+  }
+
+  /* Method checkboxes */
+  .method-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .method-checks label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .method-checks input[type=checkbox] {
+    accent-color: var(--accent);
+    width: 13px; height: 13px;
+    cursor: pointer;
+  }
+
+  /* Status toggle button */
+  .status-toggle {
+    display: flex;
+    justify-content: center;
+  }
+  .toggle-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 4px 11px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.03em;
+    min-width: 52px;
+    white-space: nowrap;
+  }
+  .toggle-btn.is-ok {
+    background: #dcf5e7;
+    color: #1a7a40;
+    border: 1.5px solid #7fd4a0;
+  }
+  .toggle-btn.is-ok:hover { background: #c5edd8; }
+  .toggle-btn.is-ng {
+    background: #fce8e8;
+    color: #b32020;
+    border: 1.5px solid #f0a0a0;
+  }
+  .toggle-btn.is-ng:hover { background: #f8d5d5; }
+
+  /* Problem level select */
+  .level-select {
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: white;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    color: var(--ink);
+    outline: none;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    padding: 4px 24px 4px 8px;
+    transition: border-color 0.15s, opacity 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffffff' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 12px 8px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  .level-select.locked {
+    opacity: 0.28;
+    pointer-events: none;
+    background: #f0f0f0;
+    cursor: default;
+  }
+  .level-select:not(.locked):hover { border-color: var(--accent); }
+  .level-select:not(.locked):focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(44,95,138,0.15); }
+  .level-C { color: var(--warn); font-weight: 700; border-color: #f0a0a0 !important; background: #fff5f5 !important; }
+  .level-B { color: var(--warn-b); font-weight: 700; border-color: #f0c870 !important; background: #fffbf0 !important; }
+  .level-A { color: var(--warn-a); font-weight: 700; border-color: #7fd4a0 !important; background: #f0faf5 !important; }
+
+  /* Photo checkbox */
+  .photo-check { display: flex; justify-content: center; }
+  .photo-check input { accent-color: var(--accent); width: 14px; height: 14px; }
+
+  /* Delete row button */
+  .del-row-btn {
+    background: none;
+    border: none;
+    color: #cc4444;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    opacity: 0.5;
+  }
+  .del-row-btn:hover { background: #fce8e8; opacity: 1; }
+
+  /* Add row area */
+  .add-row-area {
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    background: #f8fafc;
+    flex-wrap: wrap;
+  }
+  .add-row-label { font-size: 12px; color: var(--ink-light); font-weight: 500; }
+  .section-select-add {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    cursor: pointer;
+  }
+  .section-select-add:focus { border-color: var(--accent); }
+  .btn-add-row {
+    padding: 6px 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+  }
+  .btn-add-row:hover { background: var(--accent-hover); }
+
+  /* ===== REMARKS ===== */
+  .remarks-area {
+    padding: 18px 20px;
+  }
+  .remarks-area textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    min-height: 100px;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.2s;
+    line-height: 1.7;
+  }
+  .remarks-area textarea:focus { border-color: var(--accent); }
+
+  /* ===== LEGEND ===== */
+  .legend {
+    padding: 12px 20px;
+    display: flex;
+    gap: 24px;
+    background: #f8fafc;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--ink-light);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-badge {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px;
+  }
+
+  /* ===== ADD PHOTO BUTTON ===== */
+  .add-photo-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    background: var(--row-alt);
+    color: var(--ink-light);
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .add-photo-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body { background: white; font-size: 9pt; margin: 0; padding: 0; }
+
+    /* ヘッダー非表示・レイアウト完全排除 */
+    .top-bar { display: none !important; }
+
+    .wrapper { width: 100%; max-width: 100%; padding: 0; margin: 0; }
+
+    /* カード — overflow絶対に使わない */
+    .card {
+      box-shadow: none !important;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      margin: 0 0 5px 0;
+      padding: 0;
+      background: white;
+    }
+    .card-header {
+      border-radius: 4px 4px 0 0;
+      padding: 6px 14px;
+      font-size: 10pt;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .card-header::before { display: none; }
+
+    /* 基本情報 */
+    .info-grid { grid-template-columns: 2fr 3fr 1.2fr 1.8fr; }
+    .info-cell { padding: 8px 12px; }
+    .info-label { font-size: 7.5pt; margin-bottom: 3px; }
+    .info-input {
+      font-size: 10pt;
+      white-space: normal;
+      word-break: break-all;
+      border: none !important;
+      border-bottom: 1px solid #999 !important;
+    }
+
+    /* 写真エントリ印刷 */
+    .photo-section { padding: 4px 6px; }
+    .photo-entries { gap: 6px; }
+    .photo-entry {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .photo-img-zone { aspect-ratio: 1/1; }
+    .photo-img-overlay, .photo-drop-hint, .photo-img-file { display: none !important; }
+    .photo-img-zone img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-panel { border-left: 1px solid #bbb; }
+    .photo-panel-header { padding: 4px 8px; }
+    .photo-no-badge { font-size: 10pt; }
+    .photo-panel-body { padding: 5px 7px; gap: 4px; }
+    .photo-field-row { padding: 4px 6px; }
+    .photo-field-label { font-size: 8pt; }
+    .photo-field-input { font-size: 9pt; resize: none; overflow: visible; }
+    .photo-slot-del { display: none !important; }
+
+    /* ボタン・操作UI非表示 */
+    .add-photo-btn,
+    .add-row-area,
+    .del-row-btn,
+    .del-section-btn { display: none !important; }
+
+    /* テーブル */
+    td input[type=text], td textarea, .level-select {
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+    }
+    .level-select.locked { opacity: 0.4; }
+    .toggle-btn {
+      border: 1px solid #ccc !important;
+      font-size: 8pt !important;
+      padding: 2px 5px !important;
+      border-radius: 10px !important;
+    }
+    .section-row td { background: #dce8f5 !important; }
+    .table-wrap { overflow: visible; }
+
+    table { page-break-inside: auto; break-inside: auto; width: 100%; font-size: 8pt; }
+    thead { display: table-header-group; }
+    th { padding: 5px 4px; font-size: 8pt; }
+    td { padding: 4px 5px; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
+    .section-row { page-break-after: avoid; break-after: avoid; }
+
+    /* 点検チェックリストを新ページから開始 */
+    .card-inspection { page-break-before: always; break-before: page; }
+    .add-row-area { display: none !important; }
+    .remarks-area { padding: 10px 14px; }
+    .remarks-area textarea {
+      border: 1px solid #bbb !important;
+      min-height: 50px;
+      font-size: 9pt;
+    }
+
+    input::placeholder, textarea::placeholder { color: transparent !important; }
+
+    @page { margin: 8mm 8mm; size: A4; }
+  }
+
+  /* Column widths */
+  .col-no { width: 32px; text-align: center; }
+  .col-location { width: 175px; }
+  .col-method { width: 80px; }
+  .col-content { width: 220px; }
+  .col-status { width: 72px; text-align: center; }
+  .col-level { width: 88px; text-align: center; }
+  .col-photo { width: 40px; text-align: center; }
+  .col-report { min-width: 85px; }
+  .col-del { width: 30px; text-align: center; }
+
+  /* ===== MOBILE RESPONSIVE ===== */
+  @media screen and (max-width: 767px) {
+
+    /* トップバー：縦並び */
+    .top-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      position: relative;
+    }
+    .top-bar h1 { font-size: 14px; }
+    .top-bar .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+    .save-status {
+      grid-column: 1 / -1;
+      font-size: 11px;
+      justify-content: center;
+    }
+    .btn { padding: 9px 10px; font-size: 12px; justify-content: center; }
+
+    /* ラッパー余白 */
+    .wrapper { padding: 12px 10px 40px; }
+
+    /* 基本情報：1列 */
+    .info-grid { grid-template-columns: 1fr; }
+    .info-cell { border-right: none; border-bottom: 1px solid var(--border); }
+    .info-cell:last-child { border-bottom: none; }
+    .info-input { font-size: 15px; }
+
+    /* 写真グリッド：2列 */
+    .photo-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .photo-section { padding: 12px; }
+    .add-photo-btn { font-size: 13px; padding: 12px; }
+
+    /* 点検テーブル：カード型に変換 */
+    .table-wrap { overflow-x: visible; }
+    table, thead, tbody, th, td, tr { display: block; width: 100%; }
+    thead { display: none; }   /* ヘッダー行を非表示 */
+
+    #inspection-body tr:not(.section-row) {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    #inspection-body tr:not(.section-row):nth-child(even) {
+      background: white;
+    }
+
+    /* セクション行 */
+    .section-row {
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .section-row td { padding: 8px 12px; }
+
+    /* 各セルをラベル付きで表示 */
+    #inspection-body tr:not(.section-row) td {
+      border: none;
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+    }
+    #inspection-body tr:not(.section-row) td::before {
+      content: attr(data-label);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--ink-light);
+      min-width: 68px;
+      flex-shrink: 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* No列は非表示 */
+    .col-no { display: none !important; }
+
+    /* 点検箇所・内容 */
+    .col-location input,
+    .col-content textarea {
+      font-size: 14px;
+      border: 1.5px solid var(--border) !important;
+      border-radius: 6px !important;
+      background: var(--row-alt) !important;
+      padding: 6px 8px !important;
+    }
+    .col-location input:focus,
+    .col-content textarea:focus {
+      border-color: var(--accent) !important;
+      background: white !important;
+    }
+
+    /* 点検方法 */
+    .method-checks { flex-direction: row; gap: 12px; }
+
+    /* 問題の有無・程度 */
+    .col-status, .col-level {
+      width: 100%;
+      justify-content: flex-start;
+    }
+    .status-toggle { justify-content: flex-start; }
+    .toggle-btn { font-size: 13px; padding: 6px 16px; }
+    .level-select { width: auto; min-width: 120px; font-size: 13px; padding: 6px 8px; }
+
+    /* 報告事項 */
+    .col-report textarea {
+      border: 1.5px solid var(--border) !important;
+      border-radius: 6px !important;
+      background: var(--row-alt) !important;
+      padding: 6px 8px !important;
+      font-size: 13px;
+    }
+
+    /* 削除ボタン */
+    .col-del { justify-content: flex-end; padding-top: 4px !important; }
+    .del-row-btn { opacity: 0.7; font-size: 18px; }
+
+    /* 写真チェック */
+    .col-photo { justify-content: flex-start; }
+    .photo-check input { width: 18px; height: 18px; }
+
+    /* 行追加エリア */
+    .add-row-area { flex-wrap: wrap; gap: 8px; }
+    .section-select-add { width: 100%; }
+    .btn-add-row { flex: 1; padding: 10px; font-size: 13px; }
+
+    /* 凡例 */
+    .legend { flex-wrap: wrap; gap: 12px; }
+
+    /* 備考 */
+    .remarks-area textarea { font-size: 14px; min-height: 80px; }
+  }
+
+  /* 極小画面（〜374px） */
+  @media screen and (max-width: 374px) {
+    .photo-row { grid-template-columns: 1fr; }
+    .top-bar .actions { grid-template-columns: 1fr; }
+  }
+
+  /* ===== SHARE BUTTON ===== */
+  .btn-share {
+    background: #34a853;
+    color: white;
+  }
+  .btn-share:hover { background: #2a8c44; transform: translateY(-1px); }
+
+  /* ===== SHARE MODAL ===== */
+  #share-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #share-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+    max-width: 540px;
+    width: 100%;
+  }
+  .share-modal-header {
+    background: var(--header-bg);
+    color: white;
+    padding: 14px 20px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .share-modal-header h2 { font-size: 15px; font-weight: 700; margin: 0; }
+  .share-modal-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.75);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: background 0.15s;
+  }
+  .share-modal-close:hover { background: rgba(255,255,255,0.18); color: white; }
+  .share-modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .share-info {
+    font-size: 13px;
+    color: var(--ink-light);
+    line-height: 1.7;
+    margin: 0;
+  }
+  .share-config-warn {
+    background: #fff8e8;
+    border: 1px solid #f0c870;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #7a5800;
+    line-height: 1.8;
+  }
+  .share-config-warn code {
+    background: rgba(0,0,0,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .share-status-msg {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .share-loading { background: var(--accent-light); color: var(--accent); }
+  .share-error   { background: #fce8e8; color: var(--warn); }
+  .share-result-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-light);
+    margin: 0;
+  }
+  .share-url-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .share-url-row input[type=text] {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--row-alt);
+    outline: none;
+    min-width: 0;
+  }
+  .share-note {
+    font-size: 11px;
+    color: var(--ink-light);
+    line-height: 1.75;
+    background: #f8fafc;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 0;
+    border: 1px solid var(--border);
+  }
+  @media print {
+    #share-modal-overlay { display: none !important; }
+  }
+  @media screen and (max-width: 767px) {
+    #share-modal { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!--SHARE-MODAL-START-->
+<div id="share-modal-overlay">
+  <div id="share-modal">
+    <div class="share-modal-header">
+      <h2>🔗 Google Driveで共有URL発行</h2>
+      <button class="share-modal-close" onclick="closeShareModal()" title="閉じる">✕</button>
+    </div>
+    <div class="share-modal-body">
+      <p class="share-info">
+        フォームの入力内容をGoogle Driveにアップロードし、他の方と共有できるURLを発行します。<br>
+        Googleアカウントへのログインが必要です。
+      </p>
+      <div class="share-config-warn" id="share-config-warn" style="display:none">
+        ⚠️ <strong>Google Cloud設定が必要です</strong><br>
+        このHTMLファイル内の <code>GW_CLIENT_ID</code> に、Google Cloud ConsoleのOAuth 2.0クライアントIDを設定してください。<br>
+        設定手順はHTMLファイル内のコメントをご確認ください。
+      </div>
+      <div id="share-status-msg" class="share-status-msg" style="display:none"></div>
+      <button id="share-btn-start" class="btn btn-share" onclick="startShareFlow()" style="width:100%;justify-content:center;padding:11px 20px">
+        🔗 Google Driveにアップロードして共有URLを発行
+      </button>
+      <div id="share-result-area" style="display:none;flex-direction:column;gap:10px">
+        <p class="share-result-label">✅ 共有URLが発行されました：</p>
+        <div class="share-url-row">
+          <input type="text" id="share-url-display" readonly placeholder="URL生成中...">
+          <button id="copy-url-btn" class="btn btn-secondary" style="white-space:nowrap;color:var(--ink);background:#e8f0f7;border:1.5px solid var(--border)" onclick="copyShareUrl()">📋 コピー</button>
+        </div>
+        <p class="share-note">
+          ※ このURLをメールやチャットで送付してください。<br>
+          ※ 受け取った方はGoogle DriveからHTMLファイルをダウンロードし、ブラウザで開くとフォーム内容を確認できます。<br>
+          ※ 「リンクを知っている全員が閲覧可能」として設定されます。
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+<!--SHARE-MODAL-END-->
+
+<div id="photo-preview-backdrop"></div>
+<div id="photo-hover-preview"><img id="photo-hover-img" src="" alt=""></div>
+
+<div class="top-bar">
+  <h1>📋 定期巡回報告書 入力フォーム</h1>
+  <div class="actions">
+    <span class="save-status" id="save-status"></span>
+    <label class="btn btn-secondary" style="cursor:pointer" title="JSONファイルから読み込み">
+      📂 読み込み
+      <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+    </label>
+    <button class="btn btn-secondary" onclick="exportJSON()" title="JSONファイルとして保存">💾 書き出し</button>
+    <button class="btn btn-secondary" onclick="clearForm()">🗑 クリア</button>
+    <button class="btn btn-share" onclick="openShareModal()">🔗 共有URL発行</button>
+    <button class="btn btn-primary" onclick="doPrint()">🖨 PDF出力</button>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- 基本情報 -->
+  <div class="card">
+    <div class="card-header">建物設備等定期点検報告書 — 基本情報</div>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-label">物件名</div>
+        <input class="info-input" type="text" id="prop-name" placeholder="物件名を入力してください">
+      </div>
+      <div class="info-cell">
+        <div class="info-label">所在地</div>
+        <input class="info-input" type="text" id="prop-addr" placeholder="所在地を入力してください。">
+      </div>
+      <div class="info-cell">
+        <div class="info-label">巡回実施日</div>
+        <input class="info-input" type="date" id="prop-date" placeholder="日付を入力してください">
+      </div>
+      <div class="info-cell">
+        <div class="info-label">担当者</div>
+        <input class="info-input" type="text" id="prop-person" placeholder="名前を入力してください">
+      </div>
+    </div>
+  </div>
+
+  <!-- 写真 -->
+  <div class="card">
+    <div class="card-header">現地写真</div>
+    <div class="tour-url-row">
+      <span class="tour-url-label">🔗 ルームツアーURL</span>
+      <input type="url" id="tour-url" class="tour-url-input" placeholder="例: https://my.matterport.com/models/tSLfuN8t44b" oninput="updateTourPreview()">
+      <a id="tour-url-open" class="tour-url-open" href="#" target="_blank" rel="noopener" onclick="return openTourUrl()">↗ 開く</a>
+    </div>
+    <div class="tour-preview" id="tour-preview">
+      <button class="tour-preview-clear" onclick="clearTourUrl()">✕ クリア</button>
+      <iframe id="tour-iframe" src="" allowfullscreen allow="xr-spatial-tracking; fullscreen"></iframe>
+    </div>
+    <div class="photo-section">
+      <div class="photo-entries" id="photo-grid">
+        <!-- Photos injected by JS -->
+      </div>
+      <button class="add-photo-btn" onclick="addPhotoSlot()">
+        ＋ 写真枠を追加
+      </button>
+    </div>
+  </div>
+
+  <!-- 点検表 -->
+  <div class="card card-inspection">
+    <div class="card-header">点検チェックリスト</div>
+    <div class="table-wrap">
+      <table id="inspection-table">
+        <thead>
+          <tr>
+            <th class="col-no">No.</th>
+            <th class="col-location">点検箇所</th>
+            <th class="col-method">点検方法</th>
+            <th class="col-content">点検内容</th>
+            <th class="col-status">問題の<br>有無</th>
+            <th class="col-level">問題程度</th>
+            <th class="col-photo">写真</th>
+            <th class="col-report">報告事項</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="inspection-body">
+          <!-- Rows injected by JS -->
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <strong style="color:var(--ink)">※ 問題程度：</strong>
+      <div class="legend-item">
+        <div class="legend-badge" style="background:#fce4e4;color:var(--warn)">C</div>
+        <span>緊急</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-badge" style="background:#fef3e2;color:var(--warn-b)">B</div>
+        <span>要対処</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-badge" style="background:#e6f4ea;color:var(--warn-a)">A</div>
+        <span>経過観察</span>
+      </div>
+    </div>
+    <div class="add-row-area">
+      <span class="add-row-label">点検箇所を追加：</span>
+      <select class="section-select-add" id="add-section-sel">
+        <option value="A. 建物外観">A. 建物外観</option>
+        <option value="B. 1階貸室">B. 1階貸室</option>
+        <option value="C. 階段部">C. 階段部</option>
+        <option value="D. 2階貸室">D. 2階貸室</option>
+        <option value="E. 3階貸室">E. 3階貸室</option>
+        <option value="F. 屋上">F. 屋上</option>
+        <option value="G. 敷地内">G. 敷地内</option>
+      </select>
+      <button class="btn-add-row" onclick="addInspectionRow()">＋ 行を追加</button>
+      <span style="width:1px;height:24px;background:var(--border);display:inline-block;margin:0 4px"></span>
+      <button class="btn-add-row" style="background:#6b7a99" onclick="addSectionRow()">＋ セクションを追加</button>
+    </div>
+  </div>
+
+  <!-- 備考 -->
+  <div class="card">
+    <div class="card-header">備考</div>
+    <div class="remarks-area">
+      <textarea id="remarks" placeholder="特記事項・対応状況などを入力してください。"></textarea>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== DATA =====
+function doPrint() { window.print(); }
+const INSPECTION_ROWS = [
+  { section: 'A. 建物外観' },
+  { no:1,  loc:'外壁',              visuals:true,  touch:false, content:'破損・浮き・ヒビ・塗膜劣化・爆裂' },
+  { no:2,  loc:'エントランス',      visuals:true,  touch:true,  content:'破損・劣化・ヒビ・タイル' },
+  { no:3,  loc:'看板',              visuals:true,  touch:false, content:'破損・劣化・塗装・コーキング' },
+  { section: 'B. 1階貸室' },
+  { no:4,  loc:'駐車場',            visuals:true,  touch:true,  content:'天井・照明・壁・床（タイル）' },
+  { no:5,  loc:'業務用扉',          visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { no:6,  loc:'正面自動ドア',      visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { no:7,  loc:'風除室',            visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { no:8,  loc:'室内',              visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { no:9,  loc:'窓',                visuals:true,  touch:false, content:'取付状態・破損・劣化・サビ' },
+  { section: 'C. 階段部' },
+  { no:10, loc:'階段入口扉',        visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { no:11, loc:'1階踊場',           visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { no:12, loc:'階段部（1階-2階）', visuals:true,  touch:false, content:'天井・照明・壁・床' },
+  { no:13, loc:'2階踊場',           visuals:true,  touch:false, content:'天井・照明・壁・床' },
+  { no:14, loc:'階段部（2階-3階）', visuals:true,  touch:false, content:'天井・照明・壁・床' },
+  { no:15, loc:'3階踊場',           visuals:true,  touch:false, content:'天井・照明・壁・床' },
+  { no:16, loc:'3階出口扉',         visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { section: 'D. 2階貸室' },
+  { no:17, loc:'室内',              visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { no:18, loc:'窓',                visuals:true,  touch:false, content:'取付状態・破損・劣化・サビ' },
+  { section: 'E. 3階貸室' },
+  { no:19, loc:'通路',              visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { no:20, loc:'入口扉（向左側）',  visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { no:21, loc:'入口扉（向右側）',  visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { no:22, loc:'室内',              visuals:true,  touch:true,  content:'天井・照明・壁・床' },
+  { section: 'F. 屋上' },
+  { no:23, loc:'屋上',              visuals:true,  touch:false, content:'壁・床・防水' },
+  { no:24, loc:'排水',              visuals:true,  touch:false, content:'劣化・ゴミ詰まり' },
+  { no:25, loc:'給排水管',          visuals:true,  touch:false, content:'破損・劣化・サビ' },
+  { no:26, loc:'給水タンク',        visuals:true,  touch:true,  content:'破損・劣化・サビ・塗膜劣化' },
+  { section: 'G. 敷地内' },
+  { no:27, loc:'側溝通路扉',        visuals:true,  touch:true,  content:'破損・劣化・サビ' },
+  { no:28, loc:'側溝通路',          visuals:true,  touch:false, content:'コンクリート堺破損・ごみ' },
+  { no:29, loc:'立て看板',          visuals:true,  touch:false, content:'破損・劣化・サビ' },
+];
+
+let rowCounter = 30;
+
+// ===== MAKE DATA ROW TR =====
+function makeDataRow(row) {
+  const uid = row.no ? `row-${row.no}` : `row-dyn-${rowCounter++}`;
+  const tr = document.createElement('tr');
+  tr.dataset.uid = uid;
+
+  // auto-resize textarea helper
+  const autoResize = (el) => {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  };
+
+  tr.innerHTML = `
+    <td class="col-no" style="text-align:center;color:var(--ink-light);font-size:11px"></td>
+    <td class="col-location" data-label="点検箇所"><input type="text" value="${row.loc||''}" placeholder="箇所名"></td>
+    <td class="col-method" data-label="点検方法">
+      <div class="method-checks">
+        <label><input type="checkbox" class="chk-visual" ${row.visuals ? 'checked' : ''}> 目視</label>
+        <label><input type="checkbox" class="chk-touch"  ${row.touch  ? 'checked' : ''}> 指触</label>
+      </div>
+    </td>
+    <td class="col-content" data-label="点検内容"><textarea placeholder="点検内容を入力">${row.content||''}</textarea></td>
+    <td class="col-status" data-label="問題の有無">
+      <div class="status-toggle">
+        <button type="button" class="toggle-btn is-ok" onclick="toggleStatus(this)">問題なし</button>
+      </div>
+    </td>
+    <td class="col-level" data-label="問題程度">
+      <select class="level-select locked" onchange="updateLevelStyle(this)">
+        <option value="">—</option>
+        <option value="C">C 緊急</option>
+        <option value="B">B 要対処</option>
+        <option value="A">A 経過観察</option>
+      </select>
+    </td>
+    <td class="col-photo" data-label="写真">
+      <div class="photo-check"><input type="checkbox"></div>
+    </td>
+    <td class="col-report" data-label="報告事項"><textarea placeholder=""></textarea></td>
+    <td class="col-del" data-label=""><button class="del-row-btn" onclick="deleteRow(this)" title="この行を削除">✕</button></td>
+  `;
+
+  // auto-resize on input
+  tr.querySelectorAll('textarea').forEach(ta => {
+    ta.addEventListener('input', () => autoResize(ta));
+    setTimeout(() => autoResize(ta), 0);
+  });
+
+  return tr;
+}
+
+// ===== MAKE SECTION ROW =====
+function makeSectionRow(name) {
+  const tr = document.createElement('tr');
+  tr.className = 'section-row';
+  tr.innerHTML = `<td colspan="9">
+    <div class="section-cell">
+      <input class="section-input" type="text" value="${name}" placeholder="セクション名を入力"
+        oninput="refreshSectionDropdown()">
+      <button class="del-section-btn" onclick="deleteSection(this)" title="このセクションを削除">🗑 セクション削除</button>
+    </div>
+  </td>`;
+  return tr;
+}
+
+// ===== BUILD TABLE =====
+function buildTable() {
+  const tbody = document.getElementById('inspection-body');
+  tbody.innerHTML = '';
+  INSPECTION_ROWS.forEach(row => {
+    if (row.section !== undefined) {
+      tbody.appendChild(makeSectionRow(row.section));
+    } else {
+      tbody.appendChild(makeDataRow(row));
+    }
+  });
+  renumberRows();
+  refreshSectionDropdown();
+}
+
+// ===== RENUMBER =====
+function renumberRows() {
+  let n = 1;
+  document.querySelectorAll('#inspection-body tr:not(.section-row)').forEach(tr => {
+    tr.querySelector('.col-no').textContent = n++;
+  });
+}
+
+// ===== REFRESH SECTION DROPDOWN =====
+function refreshSectionDropdown() {
+  const sel = document.getElementById('add-section-sel');
+  if (!sel) return;
+  const current = sel.value;
+  const sections = [];
+  document.querySelectorAll('#inspection-body .section-input').forEach(inp => {
+    const v = inp.value.trim();
+    if (v) sections.push(v);
+  });
+  sel.innerHTML = sections.map(s =>
+    `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
+  ).join('');
+}
+
+// ===== TOGGLE STATUS =====
+function toggleStatus(btn) {
+  const isOk = btn.classList.contains('is-ok');
+  const levelSel = btn.closest('tr').querySelector('.level-select');
+  if (isOk) {
+    btn.classList.remove('is-ok');
+    btn.classList.add('is-ng');
+    btn.textContent = '問題あり';
+    levelSel.classList.remove('locked');
+  } else {
+    btn.classList.remove('is-ng');
+    btn.classList.add('is-ok');
+    btn.textContent = '問題なし';
+    levelSel.classList.add('locked');
+    levelSel.value = '';
+    updateLevelStyle(levelSel);
+  }
+}
+
+// ===== LEVEL STYLE =====
+function updateLevelStyle(sel) {
+  if (!sel) return;
+  sel.className = 'level-select';
+  if (sel.value === 'C') sel.classList.add('level-C');
+  else if (sel.value === 'B') sel.classList.add('level-B');
+  else if (sel.value === 'A') sel.classList.add('level-A');
+}
+
+// ===== DELETE ROW =====
+function deleteRow(btn) {
+  if (!confirm('この行を削除しますか？')) return;
+  btn.closest('tr').remove();
+  renumberRows();
+}
+
+// ===== DELETE SECTION =====
+function deleteSection(btn) {
+  const sectionTr = btn.closest('tr');
+  const sectionName = sectionTr.querySelector('.section-input').value;
+  if (!confirm(`「${sectionName}」のセクションとその中の全行を削除しますか？`)) return;
+  // collect rows to delete (until next section or end)
+  const toDelete = [sectionTr];
+  let next = sectionTr.nextElementSibling;
+  while (next && !next.classList.contains('section-row')) {
+    toDelete.push(next);
+    next = next.nextElementSibling;
+  }
+  toDelete.forEach(tr => tr.remove());
+  renumberRows();
+  refreshSectionDropdown();
+}
+
+// ===== ADD INSPECTION ROW =====
+function addInspectionRow() {
+  const tbody = document.getElementById('inspection-body');
+  const targetSection = document.getElementById('add-section-sel').value;
+
+  let insertAfter = null;
+  let inSection = false;
+  Array.from(tbody.rows).forEach(tr => {
+    if (tr.classList.contains('section-row')) {
+      inSection = (tr.querySelector('.section-input')?.value || '') === targetSection;
+    } else if (inSection) {
+      insertAfter = tr;
+    }
+  });
+
+  const newTr = makeDataRow({ loc:'', visuals:true, touch:false, content:'' });
+  if (insertAfter) insertAfter.after(newTr);
+  else tbody.appendChild(newTr);
+
+  renumberRows();
+  newTr.querySelector('input[type=text]').focus();
+  newTr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ===== ADD SECTION =====
+function addSectionRow() {
+  const name = `新しいセクション`;
+  const tbody = document.getElementById('inspection-body');
+  const tr = makeSectionRow(name);
+  tbody.appendChild(tr);
+  tr.querySelector('.section-input').focus();
+  tr.querySelector('.section-input').select();
+  tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  refreshSectionDropdown();
+}
+
+// ===== PHOTO SLOTS =====
+const DEFAULT_PHOTO_CAPTIONS = [
+  '', '', '',
+  '', '', '',
+  '', '', '',
+  '', '', '',
+];
+let photoCount = 0;
+
+function addPhotoSlot(caption = '') {
+  const id = `photo-slot-${photoCount++}`;
+  const no = photoCount;
+  const div = document.createElement('div');
+  div.className = 'photo-entry';
+  div.id = id;
+  div.innerHTML = `
+    <label class="photo-img-zone" id="zone-${id}">
+      <input class="photo-img-file" type="file" accept="image/*,.heic,.heif" onchange="loadPhoto(event,'${id}')">
+      <img id="img-${id}" style="display:none">
+      <div class="photo-drop-hint" id="hint-${id}">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+        <span>クリックまたはドラッグ&amp;ドロップ<br>で画像を挿入</span>
+      </div>
+    </label>
+    <div class="photo-panel">
+      <div class="photo-panel-header">
+        <button type="button" class="photo-drag-handle" title="ドラッグして並べ替え">⠿</button>
+        <span class="photo-no-badge">No. ${no}</span>
+        <span class="photo-panel-header-label">撮影情報</span>
+      </div>
+      <div class="photo-move-row">
+        <span class="photo-move-label">移動先:</span>
+        <select class="photo-move-sel" id="move-sel-${id}"><option value="">ページを選択</option></select>
+        <button type="button" class="photo-move-btn" onclick="movePhotoSlot('${id}')">この前に挿入</button>
+      </div>
+      <div class="photo-panel-body">
+        <div class="photo-field-row">
+          <div class="photo-field-label">撮影箇所</div>
+          <input class="photo-field-input" type="text" placeholder="例：外壁・エントランスなど" value="${caption}">
+        </div>
+        <div class="photo-field-row">
+          <div class="photo-field-label">備考・コメント</div>
+          <textarea class="photo-field-input" rows="3" placeholder="気づき事項・対応状況など"></textarea>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:2px;">
+          <button class="photo-slot-del" style="flex:1" onclick="removePhoto(event,'${id}')">✕ 画像を削除</button>
+          <button class="photo-slot-del" style="flex:1" onclick="deletePhotoSlot('${id}')">🗑 枠を削除</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('photo-grid').appendChild(div);
+  const zone = div.querySelector('.photo-img-zone');
+  initEntryDrop(zone, id);
+  initHoverPreview(zone, id);
+  initSortDrag(div);
+  renumberPhotos();
+}
+
+// ===== DRAG & DROP — エントリごとに設定 =====
+// ===== CLICK PREVIEW =====
+const _hoverPreview  = document.getElementById('photo-hover-preview');
+const _hoverImg      = document.getElementById('photo-hover-img');
+const _previewBackdrop = document.getElementById('photo-preview-backdrop');
+
+function closePreview() {
+  _hoverPreview.classList.remove('visible');
+  _previewBackdrop.classList.remove('visible');
+  _hoverImg.src = '';
+}
+
+// バックドロップまたはプレビュー自体をクリックで閉じる
+_previewBackdrop.addEventListener('click', closePreview);
+_hoverPreview.addEventListener('click', closePreview);
+
+// Escキーでも閉じる
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+
+function initHoverPreview(zone, id) {
+  zone.addEventListener('click', e => {
+    // ファイル選択クリックと区別：画像がある場合のみプレビュー
+    const img = document.getElementById(`img-${id}`);
+    if (!img || img.style.display === 'none' || !img.src) return;
+    e.preventDefault();
+    _hoverImg.src = img.src;
+    _hoverPreview.classList.add('visible');
+    _previewBackdrop.classList.add('visible');
+  });
+}
+
+function initEntryDrop(zone, id) {
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', e => {
+    if (zone.contains(e.relatedTarget)) return;
+    zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadPhotoFromFile(file, id);
+  });
+}
+
+function initPhotoDragDrop() {
+  // 既存エントリにドロップを再設定（restoreData後に呼ばれる）
+  document.querySelectorAll('.photo-entry').forEach(entry => {
+    const id = entry.id;
+    const zone = entry.querySelector('.photo-img-zone');
+    if (zone) { initEntryDrop(zone, id); initHoverPreview(zone, id); }
+    initSortDrag(entry);
+  });
+}
+
+// ===== PHOTO SORT (drag handle) =====
+let _sortSrc = null;
+let _fromHandle = false;
+
+document.addEventListener('mouseup', () => { _fromHandle = false; });
+
+function initSortDrag(entry) {
+  const handle = entry.querySelector('.photo-drag-handle');
+  if (!handle || entry._sortInited) return;
+  entry._sortInited = true;
+
+  handle.addEventListener('mousedown', () => { _fromHandle = true; });
+
+  entry.addEventListener('dragstart', e => {
+    if (!_fromHandle) { e.preventDefault(); return; }
+    _fromHandle = false;
+    _sortSrc = entry;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', entry.id);
+    setTimeout(() => entry.classList.add('is-dragging'), 0);
+  });
+
+  entry.addEventListener('dragend', () => {
+    if (_sortSrc) _sortSrc.classList.remove('is-dragging');
+    _sortSrc = null;
+    document.querySelectorAll('.photo-entry').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+  });
+
+  entry.addEventListener('dragover', e => {
+    if (!_sortSrc || _sortSrc === entry) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = entry.getBoundingClientRect();
+    const isTop = e.clientY < rect.top + rect.height / 2;
+    document.querySelectorAll('.photo-entry').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+    entry.classList.add(isTop ? 'drop-before' : 'drop-after');
+  });
+
+  entry.addEventListener('dragleave', e => {
+    if (!entry.contains(e.relatedTarget)) {
+      entry.classList.remove('drop-before', 'drop-after');
+    }
+  });
+
+  entry.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!_sortSrc || _sortSrc === entry) return;
+    const grid = document.getElementById('photo-grid');
+    const rect = entry.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      grid.insertBefore(_sortSrc, entry);
+    } else {
+      grid.insertBefore(_sortSrc, entry.nextSibling);
+    }
+    document.querySelectorAll('.photo-entry').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after', 'is-dragging');
+    });
+    renumberPhotos();
+    _sortSrc = null;
+  });
+
+  entry.setAttribute('draggable', 'true');
+}
+
+function renumberPhotos() {
+  const entries = Array.from(document.querySelectorAll('#photo-grid .photo-entry'));
+  entries.forEach((entry, i) => {
+    const badge = entry.querySelector('.photo-no-badge');
+    if (badge) badge.textContent = `No. ${i + 1}`;
+    const sel = entry.querySelector('.photo-move-sel');
+    if (sel) {
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">ページを選択</option>' + entries
+        .map((e, j) => e === entry ? '' : `<option value="${j + 1}">No. ${j + 1} の前</option>`)
+        .filter(Boolean).join('');
+      if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+    }
+  });
+}
+
+function movePhotoSlot(id) {
+  const sel = document.getElementById(`move-sel-${id}`);
+  if (!sel || !sel.value) return;
+  const targetNo = parseInt(sel.value);
+  const entries = Array.from(document.querySelectorAll('#photo-grid .photo-entry'));
+  const srcEntry = document.getElementById(id);
+  const targetEntry = entries[targetNo - 1];
+  if (!srcEntry || !targetEntry || srcEntry === targetEntry) return;
+  document.getElementById('photo-grid').insertBefore(srcEntry, targetEntry);
+  renumberPhotos();
+}
+
+function loadPhoto(event, id) {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadPhotoFromFile(file, id);
+}
+
+function loadPhotoFromFile(file, id) {
+  const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+    || /\.(heic|heif)$/i.test(file.name);
+
+  const applyImage = (blob) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById(`img-${id}`);
+      img.src = e.target.result;
+      img.style.display = 'block';
+      document.getElementById(`zone-${id}`)?.classList.add('has-image');
+      const hint = document.getElementById(`hint-${id}`);
+      if (hint) hint.style.display = 'none';
+    };
+    reader.readAsDataURL(blob);
+  };
+
+  if (isHeic && typeof heic2any !== 'undefined') {
+    // SafariはHEICをネイティブ表示できるのでそのまま使用
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isSafari) {
+      applyImage(file);
+    } else {
+      heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
+        .then(blob => applyImage(blob))
+        .catch(() => {
+          alert('HEIC画像の変換に失敗しました。JPEGまたはPNG形式でお試しください。');
+        });
+    }
+  } else {
+    applyImage(file);
+  }
+}
+
+function removePhoto(event, id) {
+  event.preventDefault();
+  event.stopPropagation();
+  const img = document.getElementById(`img-${id}`);
+  img.src = ''; img.style.display = 'none';
+  document.getElementById(`zone-${id}`)?.classList.remove('has-image');
+  const hint = document.getElementById(`hint-${id}`);
+  if (hint) hint.style.display = '';
+}
+
+function deletePhotoSlot(id) {
+  const item = document.getElementById(id);
+  if (!item) return;
+  item.remove();
+}
+
+function clearForm() {
+  if (!confirm('フォームの内容をすべてクリアしますか？')) return;
+  ['prop-name','prop-addr','prop-date','prop-person','remarks'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  buildTable();
+  document.getElementById('photo-grid').innerHTML = '';
+  photoCount = 0;
+  DEFAULT_PHOTO_CAPTIONS.forEach(c => addPhotoSlot(c));
+  localStorage.removeItem('teiki_report_save');
+  showSaveStatus('');
+}
+
+// ===== COLLECT / RESTORE DATA =====
+function collectData() {
+  const data = {
+    version: 1,
+    basic: {
+      name: document.getElementById('prop-name').value,
+      addr: document.getElementById('prop-addr').value,
+      date: document.getElementById('prop-date').value,
+      person: document.getElementById('prop-person').value,
+    },
+    remarks: document.getElementById('remarks').value,
+    tourUrl: document.getElementById('tour-url').value,
+    rows: [],
+    photos: [],
+  };
+
+  // table rows
+  Array.from(document.querySelectorAll('#inspection-body tr')).forEach(tr => {
+    if (tr.classList.contains('section-row')) {
+      data.rows.push({ type: 'section', text: tr.querySelector('.section-input')?.value || '' });
+    } else {
+      const tds = tr.querySelectorAll('td');
+      data.rows.push({
+        type: 'data',
+        loc:     tr.querySelector('.col-location input')?.value || '',
+        visual:  tr.querySelector('.chk-visual')?.checked ?? true,
+        touch:   tr.querySelector('.chk-touch')?.checked ?? false,
+        content: tr.querySelector('.col-content textarea')?.value || '',
+        status:  tr.querySelector('.toggle-btn')?.classList.contains('is-ok') ? 'ok' : 'ng',
+        level:   tr.querySelector('.level-select')?.value || '',
+        photo:   tr.querySelector('.photo-check input')?.checked ?? false,
+        report:  tr.querySelector('.col-report textarea')?.value || '',
+      });
+    }
+  });
+
+  // photos
+  document.querySelectorAll('.photo-entry').forEach(entry => {
+    const zone = entry.querySelector('.photo-img-zone');
+    const img = entry.querySelector('img');
+    const inputs = entry.querySelectorAll('.photo-field-input');
+    const caption = inputs[0]?.value || '';
+    const comment = inputs[1]?.value || '';
+    data.photos.push({
+      caption,
+      comment,
+      src: (img && img.src && img.style.display !== 'none') ? img.src : '',
+    });
+  });
+
+  return data;
+}
+
+function restoreData(data) {
+  if (!data || data.version !== 1) return;
+
+  // basic info
+  document.getElementById('prop-name').value   = data.basic?.name   || '';
+  document.getElementById('prop-addr').value   = data.basic?.addr   || '';
+  document.getElementById('prop-date').value   = data.basic?.date   || '';
+  document.getElementById('prop-person').value = data.basic?.person || '';
+  document.getElementById('remarks').value     = data.remarks || '';
+  document.getElementById('tour-url').value    = data.tourUrl || '';
+  updateTourPreview();
+
+  // table
+  const tbody = document.getElementById('inspection-body');
+  tbody.innerHTML = '';
+  (data.rows || []).forEach(r => {
+    if (r.type === 'section') {
+      tbody.appendChild(makeSectionRow(r.text));
+    } else {
+      const tr = makeDataRow({
+        loc: r.loc, visuals: r.visual, touch: r.touch, content: r.content
+      });
+      // status
+      const btn = tr.querySelector('.toggle-btn');
+      const sel = tr.querySelector('.level-select');
+      if (r.status === 'ng') {
+        btn.classList.replace('is-ok', 'is-ng');
+        btn.textContent = '問題あり';
+        sel.classList.remove('locked');
+      }
+      if (r.level) { sel.value = r.level; updateLevelStyle(sel); }
+      if (r.photo) tr.querySelector('.photo-check input').checked = true;
+      if (r.report) tr.querySelector('.col-report textarea').value = r.report;
+      tbody.appendChild(tr);
+    }
+  });
+  renumberRows();
+  refreshSectionDropdown();
+
+  // photos
+  document.getElementById('photo-grid').innerHTML = '';
+  photoCount = 0;
+  (data.photos || []).forEach(p => {
+    addPhotoSlot(p.caption || '');
+    const id = `photo-slot-${photoCount - 1}`;
+    // コメント復元
+    const entry = document.getElementById(id);
+    if (entry) {
+      const inputs = entry.querySelectorAll('.photo-field-input');
+      if (inputs[1]) inputs[1].value = p.comment || '';
+    }
+    // 画像復元
+    if (p.src) {
+      const img = document.getElementById(`img-${id}`);
+      if (img) {
+        img.src = p.src;
+        img.style.display = 'block';
+        document.getElementById(`zone-${id}`)?.classList.add('has-image');
+        const hint = document.getElementById(`hint-${id}`);
+        if (hint) hint.style.display = 'none';
+      }
+    }
+  });
+  initPhotoDragDrop();
+}
+
+// ===== AUTO-SAVE (localStorage) =====
+let saveTimer = null;
+let _quotaAlertShown = false;
+
+function scheduleAutoSave() {
+  showSaveStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const json = JSON.stringify(collectData());
+      localStorage.setItem('teiki_report_save', json);
+      showSaveStatus('saved');
+      _quotaAlertShown = false; // 成功時はフラグをリセット
+      // 3秒後にステータスをクリア
+      setTimeout(() => {
+        const el = document.getElementById('save-status');
+        if (el && el.textContent === '✅ 自動保存済み') {
+          el.textContent = '';
+          el.className = 'save-status';
+        }
+      }, 3000);
+    } catch(e) {
+      console.warn('自動保存失敗:', e);
+      showSaveStatus('');
+      // localStorage容量超過の場合は1回だけアラート表示
+      if ((e.name === 'QuotaExceededError' || e.code === 22) && !_quotaAlertShown) {
+        _quotaAlertShown = true;
+        alert('自動保存に失敗しました。画像サイズが大きい可能性があります。HTMLで保存することをお勧めします。');
+      }
+    }
+  }, 800);
+}
+
+function showSaveStatus(state) {
+  const el = document.getElementById('save-status');
+  el.className = 'save-status';
+  if (state === 'saving') { el.classList.add('saving'); el.textContent = '⏳ 保存中…'; }
+  else if (state === 'saved') { el.classList.add('saved'); el.textContent = '✅ 自動保存済み'; }
+  else { el.textContent = ''; }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem('teiki_report_save');
+    if (!raw) return false;
+    restoreData(JSON.parse(raw));
+    showSaveStatus('saved');
+    return true;
+  } catch(e) { return false; }
+}
+
+// ===== ROOM TOUR URL =====
+function toEmbedUrl(url) {
+  try {
+    const u = new URL(url);
+    // Matterport: https://my.matterport.com/models/MODEL_ID
+    //          -> https://my.matterport.com/show/?m=MODEL_ID
+    if (u.hostname === 'my.matterport.com') {
+      const m = u.pathname.match(/\/models\/([^/?#]+)/);
+      if (m) return `https://my.matterport.com/show/?m=${m[1]}`;
+    }
+  } catch(e) { /* invalid URL */ }
+  return url;
+}
+
+function updateTourPreview() {
+  const url = document.getElementById('tour-url').value.trim();
+  const preview = document.getElementById('tour-preview');
+  const iframe = document.getElementById('tour-iframe');
+  if (url) {
+    iframe.src = toEmbedUrl(url);
+    preview.classList.add('visible');
+  } else {
+    iframe.src = '';
+    preview.classList.remove('visible');
+  }
+}
+
+function clearTourUrl() {
+  document.getElementById('tour-url').value = '';
+  updateTourPreview();
+}
+
+function openTourUrl() {
+  const url = document.getElementById('tour-url').value.trim();
+  if (!url) { alert('URLを入力してください。'); return false; }
+  window.open(url, '_blank', 'noopener');
+  return false;
+}
+
+// HTML EXPORT は削除（JSONのみを使用）
+
+// ===== JSON EXPORT =====
+function exportJSON() {
+  try {
+    const data = collectData();
+    const json = JSON.stringify(data, null, 2);
+    // createObjectURL はローカルファイルで制限される場合があるため data URI を使用
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+    const a = document.createElement('a');
+    a.href = dataUri;
+    const name = document.getElementById('prop-name').value || '定期巡回報告書';
+    const date = document.getElementById('prop-date').value || new Date().toISOString().slice(0,10);
+    a.download = `${name}_${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch(err) {
+    alert('書き出しに失敗しました: ' + err.message);
+  }
+}
+
+// ===== JSON IMPORT =====
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data;
+    try {
+      data = JSON.parse(e.target.result);
+    } catch(err) {
+      alert('JSONファイルの解析に失敗しました。正しいファイルを選択してください。');
+      return;
+    }
+    try {
+      restoreData(data);
+    } catch(err) {
+      alert('データの復元中にエラーが発生しました: ' + err.message);
+      return;
+    }
+    // localStorageへの保存は容量超過で失敗することがあるため別途処理
+    try {
+      localStorage.setItem('teiki_report_save', e.target.result);
+    } catch(e) {
+      console.warn('localStorageへの保存をスキップ（容量超過の可能性）:', e);
+    }
+    showSaveStatus('saved');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===== ATTACH AUTO-SAVE LISTENERS =====
+function attachAutoSaveListeners() {
+  document.addEventListener('input', scheduleAutoSave);
+  document.addEventListener('change', scheduleAutoSave);
+}
+
+// ===== INIT =====
+function init() {
+  let hadSave = false;
+
+  // ページ内の余分なスクリプト要素を削除
+  const scripts = document.querySelectorAll('script');
+  scripts.forEach((script, index) => {
+    // メインスクリプト以外で、埋め込みデータを含む場合は削除
+    if (script.textContent.indexOf('window.__EMBEDDED_DATA') !== -1) {
+      script.parentNode.removeChild(script);
+    }
+  });
+
+  try {
+    if (window.__EMBEDDED_DATA__) {
+      restoreData(window.__EMBEDDED_DATA__);
+      hadSave = true;
+    } else {
+      hadSave = loadFromStorage();
+    }
+  } catch(e) {
+    console.warn('復元エラー:', e);
+    hadSave = false;
+  }
+
+  if (!hadSave) {
+    buildTable();
+    DEFAULT_PHOTO_CAPTIONS.forEach(c => addPhotoSlot(c));
+  }
+
+  initPhotoDragDrop();
+  attachAutoSaveListeners();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// ===== GOOGLE WORKSPACE 共有URL発行 =====
+//
+// 【設定手順】
+// 1. https://console.cloud.google.com/ にアクセス
+// 2. 新しいプロジェクトを作成（または既存を選択）
+// 3. 「APIとサービス」→「ライブラリ」→「Google Drive API」を有効化
+// 4. 「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」
+// 5. アプリケーションの種類: 「ウェブアプリケーション」
+//    - 承認済みのJavaScriptの生成元: ファイルをローカルで開く場合は空欄でOK
+//      （サーバーから配信する場合は配信元URLを追加）
+// 6. 発行されたクライアントIDを下記 GW_CLIENT_ID に貼り付ける
+//
+const GW_CLIENT_ID = '74452465146-vk4mom8r3d8uievthpfc81s9qi1h6mmc.apps.googleusercontent.com';
+const GW_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+let _gwToken = null;
+let _gwTokenClient = null;
+let _gwUserDomain = '';
+
+function initGoogleWorkspace() {
+  if (typeof google === 'undefined' || !google?.accounts?.oauth2) return;
+  _gwTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GW_CLIENT_ID,
+    scope: GW_SCOPE,
+    callback: (resp) => {
+      if (resp.error) {
+        setShareStatus('error', 'Google認証エラー: ' + (resp.error_description || resp.error));
+        document.getElementById('share-btn-start').style.display = '';
+        return;
+      }
+      _gwToken = resp.access_token;
+      // ログイン中のユーザーのドメインを取得（組織内共有フォールバック用）
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${_gwToken}` }
+      }).then(r => r.json()).then(info => {
+        if (info.email) _gwUserDomain = info.email.split('@')[1] || '';
+      }).catch(() => {}).finally(() => doUploadAndShare());
+      return;
+    },
+  });
+}
+
+function openShareModal() {
+  const overlay = document.getElementById('share-modal-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  document.getElementById('share-status-msg').style.display = 'none';
+  document.getElementById('share-status-msg').textContent = '';
+  document.getElementById('share-result-area').style.display = 'none';
+  document.getElementById('share-btn-start').style.display = '';
+  const warn = document.getElementById('share-config-warn');
+  if (warn) warn.style.display = GW_CLIENT_ID.startsWith('YOUR_') ? 'block' : 'none';
+}
+
+function closeShareModal() {
+  const overlay = document.getElementById('share-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'share-modal-overlay') closeShareModal();
+});
+
+function startShareFlow() {
+  if (GW_CLIENT_ID.startsWith('YOUR_')) {
+    setShareStatus('error', 'GW_CLIENT_ID が未設定です。HTMLファイル内のコメント手順に従ってClient IDを設定してください。');
+    return;
+  }
+  document.getElementById('share-btn-start').style.display = 'none';
+  setShareStatus('loading', '⏳ Google認証中...');
+  if (!_gwTokenClient) initGoogleWorkspace();
+  if (!_gwTokenClient) {
+    setShareStatus('error', 'Google APIの読み込みに失敗しました。ページをリロードして再度お試しください。');
+    document.getElementById('share-btn-start').style.display = '';
+    return;
+  }
+  if (_gwToken) {
+    doUploadAndShare();
+  } else {
+    _gwTokenClient.requestAccessToken({ prompt: 'select_account' });
+  }
+}
+
+function setShareStatus(type, msg) {
+  const el = document.getElementById('share-status-msg');
+  el.textContent = msg;
+  el.className = 'share-status-msg';
+  if (type === 'loading') el.classList.add('share-loading');
+  else if (type === 'error') el.classList.add('share-error');
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function generateShareHTML() {
+  const data = collectData();
+  // 危険なシーケンスをUnicodeエスケープして安全に埋め込む
+  const dataJson = JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+
+  let html = document.documentElement.outerHTML;
+
+  // 既存の __EMBEDDED_DATA__ スクリプトを除去
+  html = html.replace(/<script[^>]*>\s*window\.__EMBEDDED_DATA__[\s\S]*?<\/script>/g, '');
+
+  // 共有版にはシェアモーダル自体を含めない（コメントマーカーで除去）
+  html = html.replace(/<!--SHARE-MODAL-START-->[\s\S]*?<!--SHARE-MODAL-END-->/g, '');
+
+  // </head> の直前に現在のデータを埋め込む
+  const embedScript = '<script>window.__EMBEDDED_DATA__ = ' + dataJson + ';<' + '/script>';
+  html = html.replace('</head>', embedScript + '\n</head>');
+
+  return html;
+}
+
+async function doUploadAndShare() {
+  try {
+    setShareStatus('loading', '⏳ データを準備中...');
+
+    const html = generateShareHTML();
+    const sizeBytes = new TextEncoder().encode(html).length;
+    const sizeMB = sizeBytes / 1024 / 1024;
+
+    if (sizeMB > 15) {
+      setShareStatus('error', `ファイルサイズが大きすぎます（${sizeMB.toFixed(1)} MB）。写真の枚数・サイズを減らしてから再度お試しください。`);
+      document.getElementById('share-btn-start').style.display = '';
+      return;
+    }
+
+    const propName = document.getElementById('prop-name').value || '定期巡回報告書';
+    const propDate = document.getElementById('prop-date').value || new Date().toISOString().slice(0, 10);
+    const fileName = `${propName}_${propDate}.html`;
+
+    setShareStatus('loading', '⏳ Google Driveにアップロード中...');
+
+    const boundary = 'boundary_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const meta = JSON.stringify({ name: fileName, mimeType: 'text/html' });
+    const CRLF = '\r\n';
+    const body = [
+      '--' + boundary,
+      'Content-Type: application/json; charset=UTF-8',
+      '',
+      meta,
+      '--' + boundary,
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      html,
+      '--' + boundary + '--',
+    ].join(CRLF);
+
+    const uploadResp = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${_gwToken}`,
+          'Content-Type': `multipart/related; boundary="${boundary}"`,
+        },
+        body,
+      }
+    );
+
+    if (!uploadResp.ok) {
+      if (uploadResp.status === 401) {
+        _gwToken = null;
+        setShareStatus('error', 'セッションが切れました。再度ボタンを押して再認証してください。');
+        document.getElementById('share-btn-start').style.display = '';
+        return;
+      }
+      const errBody = await uploadResp.json().catch(() => ({}));
+      throw new Error(errBody.error?.message || `アップロード失敗 (HTTP ${uploadResp.status})`);
+    }
+
+    const file = await uploadResp.json();
+    const fileId = file.id;
+
+    setShareStatus('loading', '⏳ 共有設定を適用中...');
+
+    // 「全員に共有」を試みる（組織の制限でブロックされる場合がある）
+    let shareMode = 'public';
+    let permResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${_gwToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+      }
+    );
+
+    // 全員共有が失敗した場合、組織内共有にフォールバック
+    if (!permResp.ok) {
+      shareMode = 'domain';
+      permResp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${_gwToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ role: 'reader', type: 'domain', domain: _gwUserDomain || '' }),
+        }
+      );
+    }
+
+    const shareUrl = `https://drive.google.com/file/d/${fileId}/view`;
+    setShareStatus('', '');
+    document.getElementById('share-url-display').value = shareUrl;
+    document.getElementById('share-result-area').style.display = 'flex';
+
+    // 共有設定の結果をノートに反映
+    const noteEl = document.querySelector('.share-note');
+    if (noteEl) {
+      if (shareMode === 'public') {
+        noteEl.innerHTML = '✅ 「リンクを知っている全員」が閲覧可能に設定されました。<br>URLをメールやチャットで送付してください。<br><br>※ 受け取った方はHTMLファイルをダウンロードしてブラウザで開くと内容を確認できます。';
+      } else if (shareMode === 'domain') {
+        noteEl.innerHTML = '⚠️ 組織のポリシーにより外部共有が制限されています。<br>組織内（同じドメイン）のメンバーのみ閲覧可能に設定されました。<br><br>組織外の方と共有するには、Google Driveを開いてファイルの共有設定を手動で変更してください。';
+      } else {
+        noteEl.innerHTML = '⚠️ 自動共有設定に失敗しました。<br>下のURLでGoogle Driveを開き、ファイルを右クリック→「共有」から手動で共有設定を行ってください。';
+      }
+    }
+
+  } catch (err) {
+    setShareStatus('error', 'エラー: ' + err.message);
+    document.getElementById('share-btn-start').style.display = '';
+  }
+}
+
+function copyShareUrl() {
+  const input = document.getElementById('share-url-display');
+  if (!input || !input.value) return;
+  navigator.clipboard.writeText(input.value)
+    .then(() => {
+      const btn = document.getElementById('copy-url-btn');
+      const orig = btn.textContent;
+      btn.textContent = '✅ コピー済み';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    })
+    .catch(() => {
+      input.select();
+      document.execCommand('copy');
+    });
+}
+</script>
+</body>
+</html>
