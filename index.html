@@ -623,6 +623,51 @@
   }
   .btn-add-row:hover { background: var(--accent-hover); }
 
+  /* ===== ISSUES SUMMARY ===== */
+  .issues-summary-wrap {
+    padding: 16px 20px;
+  }
+  .issues-summary-empty {
+    color: var(--ink-light);
+    font-size: 13px;
+    text-align: center;
+    padding: 24px 0;
+    font-style: italic;
+  }
+  .issues-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .issues-summary-table th {
+    background: #f0f4f8;
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .issues-summary-table td {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .issues-summary-table tbody tr:nth-child(even) td { background: #fafbfc; }
+  .issue-level-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 1px solid;
+  }
+  .issue-level-A { color: var(--warn-a); background: #f0faf5; border-color: #7fd4a0; }
+  .issue-level-B { color: var(--warn-b); background: #fffbf0; border-color: #f0c870; }
+  .issue-level-C { color: var(--warn);   background: #fff5f5; border-color: #f0a0a0; }
+
   /* ===== REMARKS ===== */
   .remarks-area {
     padding: 18px 20px;
@@ -1302,6 +1347,14 @@
     </div>
   </div>
 
+  <!-- 問題あり事項まとめ -->
+  <div class="card" id="issues-card">
+    <div class="card-header">⚠️ 問題あり事項まとめ</div>
+    <div id="issues-summary-body">
+      <div class="issues-summary-empty">問題ありの事項はありません</div>
+    </div>
+  </div>
+
   <!-- 備考 -->
   <div class="card">
     <div class="card-header">備考</div>
@@ -1454,6 +1507,52 @@ function buildTable() {
   refreshSectionDropdown();
 }
 
+// ===== ISSUES SUMMARY =====
+function updateIssuesSummary() {
+  const body = document.getElementById('issues-summary-body');
+  if (!body) return;
+
+  const issues = [];
+  document.querySelectorAll('#inspection-body tr:not(.section-row)').forEach(tr => {
+    const btn = tr.querySelector('.toggle-btn');
+    if (!btn || !btn.classList.contains('is-ng')) return;
+    const no     = tr.querySelector('.col-no')?.textContent || '';
+    const loc    = tr.querySelector('.col-location input')?.value || '';
+    const level  = tr.querySelector('.level-select')?.value || '';
+    const report = tr.querySelector('.col-report textarea')?.value || '';
+    issues.push({ no, loc, level, report });
+  });
+
+  if (issues.length === 0) {
+    body.innerHTML = '<div class="issues-summary-empty">問題ありの事項はありません</div>';
+    return;
+  }
+
+  const LEVEL_LABEL = { A: 'A 経過観察', B: 'B 要対処', C: 'C 緊急' };
+  let html = `<div class="issues-summary-wrap"><table class="issues-summary-table">
+    <thead><tr>
+      <th style="width:42px;text-align:center">No.</th>
+      <th style="width:150px">点検箇所</th>
+      <th style="width:105px;text-align:center">問題程度</th>
+      <th>報告事項</th>
+    </tr></thead><tbody>`;
+
+  issues.forEach(({ no, loc, level, report }) => {
+    const badge = level
+      ? `<span class="issue-level-badge issue-level-${esc(level)}">${esc(LEVEL_LABEL[level] || level)}</span>`
+      : '<span style="color:var(--ink-light)">—</span>';
+    html += `<tr>
+      <td style="text-align:center">${esc(no)}</td>
+      <td>${esc(loc)}</td>
+      <td style="text-align:center">${badge}</td>
+      <td style="white-space:pre-wrap">${esc(report)}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+}
+
 // ===== RENUMBER =====
 function renumberRows() {
   let n = 1;
@@ -1461,6 +1560,7 @@ function renumberRows() {
     const cell = tr.querySelector('.col-no');
     if (cell) cell.textContent = n++;
   });
+  updateIssuesSummary();
 }
 
 // ===== REFRESH SECTION DROPDOWN =====
@@ -1495,6 +1595,7 @@ function toggleStatus(btn) {
     levelSel.value = '';
     updateLevelStyle(levelSel);
   }
+  updateIssuesSummary();
 }
 
 // ===== LEVEL STYLE =====
@@ -1504,6 +1605,7 @@ function updateLevelStyle(sel) {
   if (sel.value === 'C') sel.classList.add('level-C');
   else if (sel.value === 'B') sel.classList.add('level-B');
   else if (sel.value === 'A') sel.classList.add('level-A');
+  updateIssuesSummary();
 }
 
 // ===== DELETE ROW =====
@@ -2203,6 +2305,10 @@ function importJSON(event) {
 function attachAutoSaveListeners() {
   document.addEventListener('input', scheduleAutoSave);
   document.addEventListener('change', scheduleAutoSave);
+  // 報告事項の入力で問題まとめをリアルタイム更新
+  document.getElementById('inspection-body').addEventListener('input', function(e) {
+    if (e.target.closest('.col-report')) updateIssuesSummary();
+  });
 }
 
 // ===== INIT =====
