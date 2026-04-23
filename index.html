@@ -1458,7 +1458,8 @@ function buildTable() {
 function renumberRows() {
   let n = 1;
   document.querySelectorAll('#inspection-body tr:not(.section-row)').forEach(tr => {
-    tr.querySelector('.col-no').textContent = n++;
+    const cell = tr.querySelector('.col-no');
+    if (cell) cell.textContent = n++;
   });
 }
 
@@ -1509,7 +1510,10 @@ function updateLevelStyle(sel) {
 function deleteRow(btn) {
   if (!confirm('この行を削除しますか？')) return;
   btn.closest('tr').remove();
-  renumberRows();
+  setTimeout(() => {
+    renumberRows();
+    scheduleAutoSave();
+  }, 0);
 }
 
 // ===== DELETE SECTION =====
@@ -1525,8 +1529,11 @@ function deleteSection(btn) {
     next = next.nextElementSibling;
   }
   toDelete.forEach(tr => tr.remove());
-  renumberRows();
-  refreshSectionDropdown();
+  setTimeout(() => {
+    renumberRows();
+    refreshSectionDropdown();
+    scheduleAutoSave();
+  }, 0);
 }
 
 // ===== ADD INSPECTION ROW =====
