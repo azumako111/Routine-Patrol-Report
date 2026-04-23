@@ -1843,6 +1843,8 @@ function deletePhotoSlot(id) {
   const item = document.getElementById(id);
   if (!item) return;
   item.remove();
+  renumberPhotos();
+  scheduleAutoSave();
 }
 
 function clearForm() {
