@@ -439,6 +439,41 @@
     border-color: var(--accent);
     background: white;
   }
+  /* Section add-row button */
+  .add-row-in-section-btn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .add-row-in-section-btn:hover { background: rgba(255,255,255,0.35); }
+
+  /* Row drag handle */
+  .row-drag-handle {
+    display: block;
+    cursor: grab;
+    color: transparent;
+    font-size: 15px;
+    line-height: 1;
+    margin-bottom: 2px;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  #inspection-body tr:hover .row-drag-handle { color: #aab; }
+  .row-drag-handle:hover { color: var(--accent) !important; }
+  .row-drag-handle:active { cursor: grabbing; }
+  .row-no-num { display: block; font-size: 11px; color: var(--ink-light); }
+  tr.row-dragging { opacity: 0.35; }
+  tr.row-drop-before > td { border-top: 2px solid var(--accent) !important; }
+  tr.row-drop-after  > td { border-bottom: 2px solid var(--accent) !important; }
+
   .del-section-btn {
     background: none;
     border: none;
@@ -790,7 +825,9 @@
     .add-photo-btn,
     .add-row-area,
     .del-row-btn,
-    .del-section-btn { display: none !important; }
+    .del-section-btn,
+    .add-row-in-section-btn,
+    .row-drag-handle { display: none !important; }
 
     /* テーブル */
     td input[type=text], td textarea, .level-select {
@@ -1440,7 +1477,10 @@ function makeDataRow(row) {
   };
 
   tr.innerHTML = `
-    <td class="col-no" style="text-align:center;color:var(--ink-light);font-size:11px"></td>
+    <td class="col-no" style="text-align:center;padding:4px 2px">
+      <span class="row-drag-handle" title="ドラッグして並べ替え">⠿</span>
+      <span class="row-no-num"></span>
+    </td>
     <td class="col-location" data-label="点検箇所"><input type="text" value="${esc(row.loc)}" placeholder="箇所名"></td>
     <td class="col-method" data-label="点検方法">
       <div class="method-checks">
@@ -1486,6 +1526,7 @@ function makeSectionRow(name) {
     <div class="section-cell">
       <input class="section-input" type="text" value="${esc(name)}" placeholder="セクション名を入力"
         oninput="refreshSectionDropdown()">
+      <button class="add-row-in-section-btn" onclick="addRowToSection(this)" title="このセクションに行を追加">＋ 行を追加</button>
       <button class="del-section-btn" onclick="deleteSection(this)" title="このセクションを削除">🗑 セクション削除</button>
     </div>
   </td>`;
@@ -1516,7 +1557,7 @@ function updateIssuesSummary() {
   document.querySelectorAll('#inspection-body tr:not(.section-row)').forEach(tr => {
     const btn = tr.querySelector('.toggle-btn');
     if (!btn || !btn.classList.contains('is-ng')) return;
-    const no     = tr.querySelector('.col-no')?.textContent || '';
+    const no     = tr.querySelector('.row-no-num')?.textContent || '';
     const loc    = tr.querySelector('.col-location input')?.value || '';
     const level  = tr.querySelector('.level-select')?.value || '';
     const report = tr.querySelector('.col-report textarea')?.value || '';
@@ -1557,8 +1598,8 @@ function updateIssuesSummary() {
 function renumberRows() {
   let n = 1;
   document.querySelectorAll('#inspection-body tr:not(.section-row)').forEach(tr => {
-    const cell = tr.querySelector('.col-no');
-    if (cell) cell.textContent = n++;
+    const span = tr.querySelector('.row-no-num');
+    if (span) span.textContent = n++;
   });
   updateIssuesSummary();
 }
@@ -1636,6 +1677,114 @@ function deleteSection(btn) {
     refreshSectionDropdown();
     scheduleAutoSave();
   }, 0);
+}
+
+// ===== ADD ROW TO SPECIFIC SECTION (via section header button) =====
+function addRowToSection(btn) {
+  const sectionTr = btn.closest('tr');
+  // 該当セクションの最後の行を探す
+  let insertAfter = null;
+  let next = sectionTr.nextElementSibling;
+  while (next && !next.classList.contains('section-row')) {
+    insertAfter = next;
+    next = next.nextElementSibling;
+  }
+  const newTr = makeDataRow({ loc:'', visuals:true, touch:false, content:'' });
+  if (insertAfter) {
+    insertAfter.after(newTr);
+  } else {
+    // セクション内に行がない場合はセクション直後に挿入
+    sectionTr.after(newTr);
+  }
+  renumberRows();
+  newTr.querySelector('input[type=text]').focus();
+  newTr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  scheduleAutoSave();
+}
+
+// ===== ROW DRAG & DROP =====
+function initRowDragDrop() {
+  const tbody = document.getElementById('inspection-body');
+  let dragSrc = null;
+
+  // ドラッグハンドルを押した時だけ <tr> をドラッグ可能にする
+  tbody.addEventListener('mousedown', function(e) {
+    const handle = e.target.closest('.row-drag-handle');
+    if (!handle) return;
+    const tr = handle.closest('tr');
+    if (tr && !tr.classList.contains('section-row')) {
+      tr.setAttribute('draggable', 'true');
+    }
+  });
+
+  // マウスを離したらドラッグ属性を解除（ドラッグ開始しなかった場合）
+  document.addEventListener('mouseup', function() {
+    if (!dragSrc) {
+      document.querySelectorAll('#inspection-body tr[draggable]').forEach(r => {
+        r.removeAttribute('draggable');
+      });
+    }
+  });
+
+  tbody.addEventListener('dragstart', function(e) {
+    const tr = e.target.closest('tr');
+    if (!tr || tr.classList.contains('section-row') || !tr.hasAttribute('draggable')) {
+      e.preventDefault();
+      return;
+    }
+    dragSrc = tr;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    setTimeout(() => tr.classList.add('row-dragging'), 0);
+  });
+
+  tbody.addEventListener('dragend', function(e) {
+    const tr = e.target.closest('tr');
+    if (tr) { tr.removeAttribute('draggable'); tr.classList.remove('row-dragging'); }
+    tbody.querySelectorAll('tr').forEach(r => {
+      r.classList.remove('row-drop-before', 'row-drop-after');
+    });
+    dragSrc = null;
+  });
+
+  tbody.addEventListener('dragover', function(e) {
+    if (!dragSrc) return;
+    const tr = e.target.closest('tr');
+    if (!tr || tr === dragSrc) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    tbody.querySelectorAll('tr').forEach(r => r.classList.remove('row-drop-before', 'row-drop-after'));
+    const rect = tr.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      tr.classList.add('row-drop-before');
+    } else {
+      tr.classList.add('row-drop-after');
+    }
+  });
+
+  tbody.addEventListener('dragleave', function(e) {
+    if (!tbody.contains(e.relatedTarget)) {
+      tbody.querySelectorAll('tr').forEach(r => r.classList.remove('row-drop-before', 'row-drop-after'));
+    }
+  });
+
+  tbody.addEventListener('drop', function(e) {
+    if (!dragSrc) return;
+    const tr = e.target.closest('tr');
+    if (!tr || tr === dragSrc) return;
+    e.preventDefault();
+    tbody.querySelectorAll('tr').forEach(r => r.classList.remove('row-drop-before', 'row-drop-after'));
+    const rect = tr.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      tbody.insertBefore(dragSrc, tr);
+    } else {
+      tbody.insertBefore(dragSrc, tr.nextSibling);
+    }
+    setTimeout(() => {
+      renumberRows();
+      scheduleAutoSave();
+    }, 0);
+  });
 }
 
 // ===== ADD INSPECTION ROW =====
@@ -2317,6 +2466,7 @@ async function init() {
   const hadCloud = await loadFromCloudUrl();
   if (hadCloud) {
     initPhotoDragDrop();
+    initRowDragDrop();
     attachAutoSaveListeners();
     return;
   }
@@ -2325,6 +2475,7 @@ async function init() {
   const hadUrlShare = await loadFromUrlShare();
   if (hadUrlShare) {
     initPhotoDragDrop();
+    initRowDragDrop();
     attachAutoSaveListeners();
     return;
   }
@@ -2358,6 +2509,7 @@ async function init() {
   }
 
   initPhotoDragDrop();
+  initRowDragDrop();
   attachAutoSaveListeners();
 }
 
