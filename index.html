@@ -466,9 +466,13 @@
     user-select: none;
     transition: color 0.15s;
   }
-  #inspection-body tr:hover .row-drag-handle { color: #aab; }
+  #inspection-body tr:not(.section-row):hover .row-drag-handle { color: #aab; }
   .row-drag-handle:hover { color: var(--accent) !important; }
   .row-drag-handle:active { cursor: grabbing; }
+  /* セクション行のハンドルは白系 */
+  .section-row .row-drag-handle { color: rgba(255,255,255,0.25); transition: color 0.15s; }
+  .section-row:hover .row-drag-handle { color: rgba(255,255,255,0.7); }
+  .section-row .row-drag-handle:hover { color: white !important; }
   .row-no-num { display: block; font-size: 11px; color: var(--ink-light); }
   tr.row-dragging { opacity: 0.35; }
   tr.row-drop-before > td { border-top: 2px solid var(--accent) !important; }
@@ -556,11 +560,11 @@
     white-space: nowrap;
   }
   .toggle-btn.is-ok {
-    background: #dcf5e7;
-    color: #1a7a40;
-    border: 1.5px solid #7fd4a0;
+    background: #e8e8ec;
+    color: #666;
+    border: 1.5px solid #c4c4cc;
   }
-  .toggle-btn.is-ok:hover { background: #c5edd8; }
+  .toggle-btn.is-ok:hover { background: #d8d8de; }
   .toggle-btn.is-ng {
     background: #fce8e8;
     color: #b32020;
@@ -1312,7 +1316,7 @@
     <div class="card-header">現地写真</div>
     <div class="tour-url-row">
       <span class="tour-url-label">🔗 ルームツアーURL</span>
-      <input type="url" id="tour-url" class="tour-url-input" placeholder="例: https://my.matterport.com/models/tSLfuN8t44b" oninput="updateTourPreview()">
+      <input type="url" id="tour-url" class="tour-url-input" placeholder="URLを指定して下さい" oninput="updateTourPreview()">
       <a id="tour-url-open" class="tour-url-open" href="#" target="_blank" rel="noopener" onclick="return openTourUrl()">↗ 開く</a>
     </div>
     <div class="tour-preview" id="tour-preview">
@@ -1524,6 +1528,7 @@ function makeSectionRow(name) {
   tr.className = 'section-row';
   tr.innerHTML = `<td colspan="9">
     <div class="section-cell">
+      <span class="row-drag-handle" title="ドラッグして並べ替え">⠿</span>
       <input class="section-input" type="text" value="${esc(name)}" placeholder="セクション名を入力"
         oninput="refreshSectionDropdown()">
       <button class="add-row-in-section-btn" onclick="addRowToSection(this)" title="このセクションに行を追加">＋ 行を追加</button>
@@ -1702,63 +1707,104 @@ function addRowToSection(btn) {
   scheduleAutoSave();
 }
 
-// ===== ROW DRAG & DROP =====
+// ===== ROW DRAG & DROP (data rows + section groups) =====
+// セクション配下の行をまとめて返す
+function collectSectionGroup(sectionTr) {
+  const group = [sectionTr];
+  let next = sectionTr.nextElementSibling;
+  while (next && !next.classList.contains('section-row')) {
+    group.push(next);
+    next = next.nextElementSibling;
+  }
+  return group;
+}
+// セクションの最後の行を返す
+function getLastRowOfSection(sectionTr) {
+  let last = sectionTr;
+  let next = sectionTr.nextElementSibling;
+  while (next && !next.classList.contains('section-row')) {
+    last = next;
+    next = next.nextElementSibling;
+  }
+  return last;
+}
+// データ行が属するセクション行を返す
+function findOwningSection(dataTr) {
+  let prev = dataTr.previousElementSibling;
+  while (prev) {
+    if (prev.classList.contains('section-row')) return prev;
+    prev = prev.previousElementSibling;
+  }
+  return null;
+}
+
 function initRowDragDrop() {
   const tbody = document.getElementById('inspection-body');
   let dragSrc = null;
+  let dragSrcIsSection = false;
 
-  // ドラッグハンドルを押した時だけ <tr> をドラッグ可能にする
+  // ハンドルを押した時のみ draggable を有効化（入力欄への干渉を防ぐ）
   tbody.addEventListener('mousedown', function(e) {
     const handle = e.target.closest('.row-drag-handle');
     if (!handle) return;
     const tr = handle.closest('tr');
-    if (tr && !tr.classList.contains('section-row')) {
-      tr.setAttribute('draggable', 'true');
-    }
+    if (tr) tr.setAttribute('draggable', 'true');
   });
 
-  // マウスを離したらドラッグ属性を解除（ドラッグ開始しなかった場合）
   document.addEventListener('mouseup', function() {
     if (!dragSrc) {
-      document.querySelectorAll('#inspection-body tr[draggable]').forEach(r => {
-        r.removeAttribute('draggable');
-      });
+      document.querySelectorAll('#inspection-body tr[draggable]').forEach(r => r.removeAttribute('draggable'));
     }
   });
 
   tbody.addEventListener('dragstart', function(e) {
     const tr = e.target.closest('tr');
-    if (!tr || tr.classList.contains('section-row') || !tr.hasAttribute('draggable')) {
-      e.preventDefault();
-      return;
-    }
+    if (!tr || !tr.hasAttribute('draggable')) { e.preventDefault(); return; }
     dragSrc = tr;
+    dragSrcIsSection = tr.classList.contains('section-row');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', '');
-    setTimeout(() => tr.classList.add('row-dragging'), 0);
+    const group = dragSrcIsSection ? collectSectionGroup(tr) : [tr];
+    setTimeout(() => group.forEach(r => r.classList.add('row-dragging')), 0);
   });
 
-  tbody.addEventListener('dragend', function(e) {
-    const tr = e.target.closest('tr');
-    if (tr) { tr.removeAttribute('draggable'); tr.classList.remove('row-dragging'); }
+  tbody.addEventListener('dragend', function() {
     tbody.querySelectorAll('tr').forEach(r => {
-      r.classList.remove('row-drop-before', 'row-drop-after');
+      r.removeAttribute('draggable');
+      r.classList.remove('row-dragging', 'row-drop-before', 'row-drop-after');
     });
     dragSrc = null;
+    dragSrcIsSection = false;
   });
 
   tbody.addEventListener('dragover', function(e) {
     if (!dragSrc) return;
     const tr = e.target.closest('tr');
-    if (!tr || tr === dragSrc) return;
+    if (!tr) return;
+
+    // セクションドラッグ時はセクション行単位でスナップ
+    let target = tr;
+    if (dragSrcIsSection) {
+      if (!tr.classList.contains('section-row')) {
+        target = findOwningSection(tr);
+        if (!target) return;
+      }
+      if (collectSectionGroup(dragSrc).includes(target)) return;
+    } else {
+      if (tr === dragSrc) return;
+    }
+
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     tbody.querySelectorAll('tr').forEach(r => r.classList.remove('row-drop-before', 'row-drop-after'));
-    const rect = tr.getBoundingClientRect();
+
+    const rect = target.getBoundingClientRect();
     if (e.clientY < rect.top + rect.height / 2) {
-      tr.classList.add('row-drop-before');
+      target.classList.add('row-drop-before');
     } else {
-      tr.classList.add('row-drop-after');
+      // セクションドラッグ時はそのセクションの最終行の下に表示
+      const indicatorRow = dragSrcIsSection ? getLastRowOfSection(target) : target;
+      indicatorRow.classList.add('row-drop-after');
     }
   });
 
@@ -1771,19 +1817,40 @@ function initRowDragDrop() {
   tbody.addEventListener('drop', function(e) {
     if (!dragSrc) return;
     const tr = e.target.closest('tr');
-    if (!tr || tr === dragSrc) return;
+    if (!tr) return;
     e.preventDefault();
     tbody.querySelectorAll('tr').forEach(r => r.classList.remove('row-drop-before', 'row-drop-after'));
-    const rect = tr.getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height / 2) {
-      tbody.insertBefore(dragSrc, tr);
+
+    if (dragSrcIsSection) {
+      // セクション（配下行ごと）を移動
+      let target = tr.classList.contains('section-row') ? tr : findOwningSection(tr);
+      if (!target) return;
+      const group = collectSectionGroup(dragSrc);
+      if (group.includes(target)) return;
+      const rect = target.getBoundingClientRect();
+      if (e.clientY < rect.top + target.getBoundingClientRect().height / 2) {
+        group.forEach(r => tbody.insertBefore(r, target));
+      } else {
+        const lastRow = getLastRowOfSection(target);
+        const afterRef = lastRow.nextSibling;
+        if (afterRef) {
+          group.forEach(r => tbody.insertBefore(r, afterRef));
+        } else {
+          group.forEach(r => tbody.appendChild(r));
+        }
+      }
     } else {
-      tbody.insertBefore(dragSrc, tr.nextSibling);
+      // データ行を移動
+      if (tr === dragSrc) return;
+      const rect = tr.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        tbody.insertBefore(dragSrc, tr);
+      } else {
+        tbody.insertBefore(dragSrc, tr.nextSibling);
+      }
     }
-    setTimeout(() => {
-      renumberRows();
-      scheduleAutoSave();
-    }, 0);
+
+    setTimeout(() => { renumberRows(); scheduleAutoSave(); }, 0);
   });
 }
 
