@@ -161,20 +161,39 @@
   .info-input:focus { border-bottom-color: var(--accent); }
 
   /* ===== ROOM TOUR URL ===== */
-  .tour-url-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
+  .tour-url-list {
+    padding: 10px 20px 4px;
     background: var(--accent-light);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
-  .tour-url-label {
+  .tour-url-list-header {
     font-size: 13px;
     font-weight: 600;
     color: var(--accent);
-    white-space: nowrap;
+    padding-bottom: 2px;
   }
+  .tour-url-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tour-url-name-input {
+    width: 160px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .tour-url-name-input:focus { border-color: var(--accent); }
   .tour-url-input {
     flex: 1;
     border: 1px solid var(--border);
@@ -205,6 +224,39 @@
     gap: 4px;
   }
   .tour-url-open:hover { background: var(--accent-hover); }
+  .tour-url-del {
+    padding: 7px 10px;
+    background: transparent;
+    color: var(--warn);
+    border: 1px solid var(--warn);
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .tour-url-del:hover { background: var(--warn); color: white; }
+  .tour-url-add-row {
+    padding: 8px 20px 12px;
+    background: var(--accent-light);
+    border-bottom: 1px solid var(--border);
+  }
+  .tour-url-add-btn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px dashed var(--accent);
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tour-url-add-btn:hover { background: var(--accent-light); border-style: solid; }
+  @media print {
+    .tour-url-del, .tour-url-add-row { display: none !important; }
+  }
 
   .tour-preview {
     display: none;
@@ -1314,13 +1366,15 @@
   <!-- 写真 -->
   <div class="card">
     <div class="card-header">現地写真</div>
-    <div class="tour-url-row">
-      <span class="tour-url-label">🔗 ルームツアーURL</span>
-      <input type="url" id="tour-url" class="tour-url-input" placeholder="URLを指定して下さい" oninput="updateTourPreview()">
-      <a id="tour-url-open" class="tour-url-open" href="#" target="_blank" rel="noopener" onclick="return openTourUrl()">↗ 開く</a>
+    <div class="tour-url-list" id="tour-url-list">
+      <div class="tour-url-list-header">🔗 ルームツアーURL</div>
+      <!-- rows injected by JS -->
+    </div>
+    <div class="tour-url-add-row">
+      <button class="tour-url-add-btn" onclick="addTourUrl()">＋ ルームツアーURLを追加</button>
     </div>
     <div class="tour-preview" id="tour-preview">
-      <button class="tour-preview-clear" onclick="clearTourUrl()">✕ クリア</button>
+      <button class="tour-preview-clear" onclick="clearActiveTourPreview()">✕ クリア</button>
       <iframe id="tour-iframe" src="" allow="xr-spatial-tracking; fullscreen"></iframe>
     </div>
     <div class="photo-section">
@@ -1898,6 +1952,88 @@ const DEFAULT_PHOTO_CAPTIONS = [
   '', '', '',
 ];
 let photoCount = 0;
+let tourUrlCount = 0;
+let activeTourInputEl = null;
+
+function addTourUrl(label, url) {
+  const id = ++tourUrlCount;
+  const defaultLabel = label !== undefined ? label : '';
+  const defaultUrl   = url   !== undefined ? url   : '';
+  const list = document.getElementById('tour-url-list');
+  const row = document.createElement('div');
+  row.className = 'tour-url-row';
+  row.id = `tour-url-row-${id}`;
+  row.innerHTML = `
+    <input type="text" class="tour-url-name-input" value="${escHtml(defaultLabel)}" placeholder="建物名を入力">
+    <input type="url"  class="tour-url-input" value="${escHtml(defaultUrl)}" placeholder="URLを入力してください"
+      onfocus="activeTourInputEl=this;updateTourPreviewFor(this)"
+      oninput="activeTourInputEl=this;updateTourPreviewFor(this)">
+    <button class="tour-url-open" onclick="openTourUrlRow(this)">↗ 開く</button>
+    <button class="tour-url-del" onclick="delTourUrl(this)" title="削除">✕</button>
+  `;
+  list.appendChild(row);
+  scheduleAutoSave();
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function delTourUrl(btn) {
+  const row = btn.closest('.tour-url-row');
+  const urlInput = row.querySelector('.tour-url-input');
+  if (activeTourInputEl === urlInput) {
+    activeTourInputEl = null;
+    document.getElementById('tour-iframe').src = '';
+    document.getElementById('tour-preview').classList.remove('visible');
+  }
+  row.remove();
+  scheduleAutoSave();
+}
+
+function updateTourPreviewFor(input) {
+  const url = input.value.trim();
+  const preview = document.getElementById('tour-preview');
+  const iframe  = document.getElementById('tour-iframe');
+  const note    = document.getElementById('tour-error-note');
+  if (url) {
+    iframe.src = toEmbedUrl(url);
+    preview.classList.add('visible');
+    if (note) note.style.display = 'block';
+  } else {
+    iframe.src = '';
+    preview.classList.remove('visible');
+    if (note) note.style.display = 'none';
+  }
+}
+
+function clearActiveTourPreview() {
+  if (activeTourInputEl) {
+    activeTourInputEl.value = '';
+  }
+  document.getElementById('tour-iframe').src = '';
+  document.getElementById('tour-preview').classList.remove('visible');
+  const note = document.getElementById('tour-error-note');
+  if (note) note.style.display = 'none';
+  scheduleAutoSave();
+}
+
+function openTourUrlRow(btn) {
+  const row = btn.closest('.tour-url-row');
+  const url = row.querySelector('.tour-url-input').value.trim();
+  if (!url) { alert('URLを入力してください。'); return; }
+  window.open(url, '_blank', 'noopener');
+}
+
+function initTourUrlList() {
+  const list = document.getElementById('tour-url-list');
+  // ヘッダー以外の既存rowを削除
+  Array.from(list.querySelectorAll('.tour-url-row')).forEach(r => r.remove());
+  tourUrlCount = 0;
+  activeTourInputEl = null;
+  document.getElementById('tour-iframe').src = '';
+  document.getElementById('tour-preview').classList.remove('visible');
+}
 
 function addPhotoSlot(caption = '') {
   const id = `photo-slot-${photoCount++}`;
@@ -2167,10 +2303,11 @@ function deletePhotoSlot(id) {
 
 function clearForm() {
   if (!confirm('フォームの内容をすべてクリアしますか？')) return;
-  ['prop-name','prop-addr','prop-date','prop-person','remarks','tour-url'].forEach(id => {
+  ['prop-name','prop-addr','prop-date','prop-person','remarks'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  updateTourPreview();
+  initTourUrlList();
+  addTourUrl('', '');
   buildTable();
   document.getElementById('photo-grid').innerHTML = '';
   photoCount = 0;
@@ -2190,7 +2327,10 @@ function collectData() {
       person: document.getElementById('prop-person').value,
     },
     remarks: document.getElementById('remarks').value,
-    tourUrl: document.getElementById('tour-url').value,
+    tourUrls: Array.from(document.querySelectorAll('#tour-url-list .tour-url-row')).map(row => ({
+      label: row.querySelector('.tour-url-name-input')?.value || '',
+      url:   row.querySelector('.tour-url-input')?.value || '',
+    })),
     rows: [],
     photos: [],
   };
@@ -2247,7 +2387,16 @@ function restoreData(data) {
     data.basic.person = sanitizeString(data.basic.person, 100);
   }
   data.remarks  = sanitizeString(data.remarks,  2000);
-  data.tourUrl  = sanitizeString(data.tourUrl,   500);
+  // 旧形式(tourUrl)→新形式(tourUrls)への移行
+  if (!Array.isArray(data.tourUrls)) {
+    const oldUrl = sanitizeString(data.tourUrl || '', 500);
+    data.tourUrls = oldUrl ? [{ label: '', url: oldUrl }] : [];
+  } else {
+    data.tourUrls = data.tourUrls.slice(0, 50).map(t => ({
+      label: sanitizeString(t?.label || '', 200),
+      url:   sanitizeString(t?.url   || '', 500),
+    }));
+  }
   // rows・photos の各フィールドを検証
   if (Array.isArray(data.rows)) {
     data.rows = data.rows.slice(0, 500).map(r => {
@@ -2280,8 +2429,12 @@ function restoreData(data) {
   document.getElementById('prop-date').value   = data.basic?.date   || '';
   document.getElementById('prop-person').value = data.basic?.person || '';
   document.getElementById('remarks').value     = data.remarks || '';
-  document.getElementById('tour-url').value    = data.tourUrl || '';
-  updateTourPreview();
+  initTourUrlList();
+  if (data.tourUrls && data.tourUrls.length > 0) {
+    data.tourUrls.forEach(t => addTourUrl(t.label, t.url));
+  } else {
+    addTourUrl(data.basic?.name || '', '');
+  }
 
   // table
   const tbody = document.getElementById('inspection-body');
@@ -2436,33 +2589,6 @@ function toEmbedUrl(url) {
   return url;
 }
 
-function updateTourPreview() {
-  const url = document.getElementById('tour-url').value.trim();
-  const preview = document.getElementById('tour-preview');
-  const iframe = document.getElementById('tour-iframe');
-  const note = document.getElementById('tour-error-note');
-  if (url) {
-    iframe.src = toEmbedUrl(url);
-    preview.classList.add('visible');
-    if (note) note.style.display = 'block';
-  } else {
-    iframe.src = '';
-    preview.classList.remove('visible');
-    if (note) note.style.display = 'none';
-  }
-}
-
-function clearTourUrl() {
-  document.getElementById('tour-url').value = '';
-  updateTourPreview();
-}
-
-function openTourUrl() {
-  const url = document.getElementById('tour-url').value.trim();
-  if (!url) { alert('URLを入力してください。'); return false; }
-  window.open(url, '_blank', 'noopener');
-  return false;
-}
 
 // HTML EXPORT は削除（JSONのみを使用）
 
@@ -2571,6 +2697,7 @@ async function init() {
   }
 
   if (!hadSave) {
+    addTourUrl(document.getElementById('prop-name').value || '', '');
     buildTable();
     DEFAULT_PHOTO_CAPTIONS.forEach(c => addPhotoSlot(c));
   }
