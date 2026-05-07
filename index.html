@@ -258,24 +258,18 @@
     .tour-url-del, .tour-url-add-row { display: none !important; }
   }
 
+  /* ===== TOUR PREVIEW: 1件＝iframe全幅 / 2件以上＝カードグリッド ===== */
   .tour-preview {
     display: none;
     border-top: 1px solid var(--border);
-    background: #000;
   }
   .tour-preview.visible { display: block; }
 
-  /* 1カラム（URL1件）*/
+  /* 1件: iframe全幅 */
   .tour-preview-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 2px;
   }
-  /* 2カラム（URL2件以上）*/
-  .tour-preview.multi .tour-preview-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .tour-preview-item {
     position: relative;
     background: #000;
@@ -286,19 +280,60 @@
     height: 480px;
     border: none;
   }
-  .tour-preview.multi .tour-preview-item iframe {
-    height: 280px;
+
+  /* 2件以上: カードグリッド（iframeなし・新タブで開く） */
+  .tour-preview.multi {
+    background: var(--bg);
+    padding: 16px 20px;
   }
-  .tour-preview-caption {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    background: rgba(0,0,0,0.62);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 6px 12px;
-    letter-spacing: 0.04em;
-    pointer-events: none;
+  .tour-preview.multi .tour-preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .tour-preview.multi .tour-preview-item {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 20px;
+    cursor: pointer;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    text-decoration: none;
+  }
+  .tour-preview.multi .tour-preview-item:hover {
+    box-shadow: 0 4px 16px rgba(44,95,138,0.15);
+    border-color: var(--accent);
+  }
+  .tour-preview-card-icon {
+    width: 48px; height: 48px;
+    background: var(--accent-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .tour-preview-card-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    word-break: break-all;
+  }
+  .tour-preview-card-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 18px;
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
   }
   @media print {
     .tour-preview { display: none !important; }
@@ -2001,7 +2036,7 @@ function delTourUrl(btn) {
   scheduleAutoSave();
 }
 
-/* プレビューグリッドを再描画する（URL件数に応じて1 or 2カラム切替） */
+/* プレビューグリッドを再描画する（1件＝iframe全幅 / 2件以上＝カードグリッド・新タブ） */
 function renderTourPreviews() {
   const preview = document.getElementById('tour-preview');
   const grid    = document.getElementById('tour-preview-grid');
@@ -2024,29 +2059,47 @@ function renderTourPreviews() {
   preview.classList.toggle('multi', isMulti);
   preview.classList.add('visible');
 
-  // 既存iframeのsrcリストと比較して差分があるときだけ再描画
+  // 差分チェック
   const existing = Array.from(grid.querySelectorAll('.tour-preview-item'));
   const needsRebuild =
     existing.length !== entries.length ||
-    entries.some((e, i) => {
-      const ifr = existing[i]?.querySelector('iframe');
-      return !ifr || ifr.getAttribute('data-src') !== e.url || ifr.getAttribute('data-label') !== e.label;
-    });
+    entries.some((e, i) => existing[i]?.getAttribute('data-url') !== e.url ||
+                           existing[i]?.getAttribute('data-label') !== e.label);
 
   if (!needsRebuild) return;
 
   grid.innerHTML = '';
-  entries.forEach(e => {
+
+  if (isMulti) {
+    // 2件以上: クリッカブルカード（新タブで開く）
+    entries.forEach(e => {
+      const item = document.createElement('a');
+      item.className = 'tour-preview-item';
+      item.href = e.url;
+      item.target = '_blank';
+      item.rel = 'noopener';
+      item.setAttribute('data-url', e.url);
+      item.setAttribute('data-label', e.label);
+      item.innerHTML = `
+        <div class="tour-preview-card-icon">🔗</div>
+        ${e.label ? `<div class="tour-preview-card-label">${escHtml(e.label)}</div>` : ''}
+        <div class="tour-preview-card-btn">↗ 新しいタブで開く</div>
+      `;
+      grid.appendChild(item);
+    });
+  } else {
+    // 1件: iframe全幅
+    const e = entries[0];
     const item = document.createElement('div');
     item.className = 'tour-preview-item';
+    item.setAttribute('data-url', e.url);
+    item.setAttribute('data-label', e.label);
     const iframe = document.createElement('iframe');
     iframe.src = toEmbedUrl(e.url);
-    iframe.setAttribute('data-src', e.url);
-    iframe.setAttribute('data-label', e.label);
     iframe.allow = 'xr-spatial-tracking; fullscreen';
     item.appendChild(iframe);
     grid.appendChild(item);
-  });
+  }
 }
 
 function openTourUrlRow(btn) {
