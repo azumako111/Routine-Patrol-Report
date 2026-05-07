@@ -281,59 +281,22 @@
     border: none;
   }
 
-  /* 2件以上: カードグリッド（iframeなし・新タブで開く） */
+  /* 2件以上: iframeグリッド＋余白 */
   .tour-preview.multi {
     background: var(--bg);
     padding: 16px 20px;
   }
   .tour-preview.multi .tour-preview-grid {
-    display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
   .tour-preview.multi .tour-preview-item {
-    background: var(--white);
-    border: 1.5px solid var(--border);
     border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 24px 20px;
-    cursor: pointer;
-    transition: box-shadow 0.2s, border-color 0.2s;
-    text-decoration: none;
+    overflow: hidden;
+    border: 1.5px solid var(--border);
   }
-  .tour-preview.multi .tour-preview-item:hover {
-    box-shadow: 0 4px 16px rgba(44,95,138,0.15);
-    border-color: var(--accent);
-  }
-  .tour-preview-card-icon {
-    width: 48px; height: 48px;
-    background: var(--accent-light);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px;
-  }
-  .tour-preview-card-label {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--ink);
-    text-align: center;
-    word-break: break-all;
-  }
-  .tour-preview-card-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 18px;
-    background: var(--accent);
-    color: white;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
+  .tour-preview.multi .tour-preview-item iframe {
+    height: 300px;
   }
   @media print {
     .tour-preview { display: none !important; }
@@ -2070,26 +2033,8 @@ function renderTourPreviews() {
 
   grid.innerHTML = '';
 
-  if (isMulti) {
-    // 2件以上: クリッカブルカード（新タブで開く）
-    entries.forEach(e => {
-      const item = document.createElement('a');
-      item.className = 'tour-preview-item';
-      item.href = e.url;
-      item.target = '_blank';
-      item.rel = 'noopener';
-      item.setAttribute('data-url', e.url);
-      item.setAttribute('data-label', e.label);
-      item.innerHTML = `
-        <div class="tour-preview-card-icon">🔗</div>
-        ${e.label ? `<div class="tour-preview-card-label">${escHtml(e.label)}</div>` : ''}
-        <div class="tour-preview-card-btn">↗ 新しいタブで開く</div>
-      `;
-      grid.appendChild(item);
-    });
-  } else {
-    // 1件: iframe全幅
-    const e = entries[0];
+  // 全件iframeで表示（1件＝全幅480px / 2件以上＝2カラム300px）
+  entries.forEach(e => {
     const item = document.createElement('div');
     item.className = 'tour-preview-item';
     item.setAttribute('data-url', e.url);
@@ -2099,7 +2044,7 @@ function renderTourPreviews() {
     iframe.allow = 'xr-spatial-tracking; fullscreen';
     item.appendChild(iframe);
     grid.appendChild(item);
-  }
+  });
 }
 
 function openTourUrlRow(btn) {
