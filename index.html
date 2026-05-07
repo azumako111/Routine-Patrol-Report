@@ -2045,12 +2045,6 @@ function renderTourPreviews() {
     iframe.setAttribute('data-label', e.label);
     iframe.allow = 'xr-spatial-tracking; fullscreen';
     item.appendChild(iframe);
-    if (e.label) {
-      const cap = document.createElement('div');
-      cap.className = 'tour-preview-caption';
-      cap.textContent = e.label;
-      item.appendChild(cap);
-    }
     grid.appendChild(item);
   });
 }
