@@ -15,15 +15,18 @@ jobs:
         run: npm install --global vercel@latest
 
       # Supabase認証情報をVercel環境変数に自動同期
-      # GitHubシークレット SUPABASE_URL / SUPABASE_ANON_KEY が設定されている場合のみ実行
       - name: Sync Supabase secrets to Vercel environment variables
-        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          # シークレット未設定の場合はスキップ
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets not configured, skipping..."
+            exit 0
+          fi
           upsert_env() {
             local KEY="$1" VAL="$2"
             # 既存のenv IDを検索
