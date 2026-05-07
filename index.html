@@ -262,29 +262,44 @@
     display: none;
     border-top: 1px solid var(--border);
     background: #000;
-    position: relative;
   }
   .tour-preview.visible { display: block; }
-  .tour-preview iframe {
+
+  /* 1カラム（URL1件）*/
+  .tour-preview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  /* 2カラム（URL2件以上）*/
+  .tour-preview.multi .tour-preview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tour-preview-item {
+    position: relative;
+    background: #000;
+  }
+  .tour-preview-item iframe {
     display: block;
     width: 100%;
     height: 480px;
     border: none;
   }
-  .tour-preview-clear {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    background: rgba(0,0,0,0.55);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 5px 10px;
-    font-size: 12px;
-    cursor: pointer;
-    z-index: 2;
+  .tour-preview.multi .tour-preview-item iframe {
+    height: 280px;
   }
-  .tour-preview-clear:hover { background: rgba(0,0,0,0.8); }
+  .tour-preview-caption {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.62);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+  }
   @media print {
     .tour-preview { display: none !important; }
   }
@@ -1374,8 +1389,9 @@
       <button class="tour-url-add-btn" onclick="addTourUrl()">＋ ルームツアーURLを追加</button>
     </div>
     <div class="tour-preview" id="tour-preview">
-      <button class="tour-preview-clear" onclick="clearActiveTourPreview()">✕ クリア</button>
-      <iframe id="tour-iframe" src="" allow="xr-spatial-tracking; fullscreen"></iframe>
+      <div class="tour-preview-grid" id="tour-preview-grid">
+        <!-- iframes injected by JS -->
+      </div>
     </div>
     <div class="photo-section">
       <div class="photo-entries" id="photo-grid">
@@ -1953,9 +1969,8 @@ const DEFAULT_PHOTO_CAPTIONS = [
 ];
 let photoCount = 0;
 let tourUrlCount = 0;
-let activeTourInputEl = null;
 
-function addTourUrl(label, url) {
+function addTourUrl(label, url, skipRender) {
   const id = ++tourUrlCount;
   const defaultLabel = label !== undefined ? label : '';
   const defaultUrl   = url   !== undefined ? url   : '';
@@ -1964,14 +1979,15 @@ function addTourUrl(label, url) {
   row.className = 'tour-url-row';
   row.id = `tour-url-row-${id}`;
   row.innerHTML = `
-    <input type="text" class="tour-url-name-input" value="${escHtml(defaultLabel)}" placeholder="建物名を入力">
+    <input type="text" class="tour-url-name-input" value="${escHtml(defaultLabel)}" placeholder="建物名を入力"
+      oninput="renderTourPreviews()">
     <input type="url"  class="tour-url-input" value="${escHtml(defaultUrl)}" placeholder="URLを入力してください"
-      onfocus="activeTourInputEl=this;updateTourPreviewFor(this)"
-      oninput="activeTourInputEl=this;updateTourPreviewFor(this)">
+      oninput="renderTourPreviews()">
     <button class="tour-url-open" onclick="openTourUrlRow(this)">↗ 開く</button>
     <button class="tour-url-del" onclick="delTourUrl(this)" title="削除">✕</button>
   `;
   list.appendChild(row);
+  if (!skipRender) renderTourPreviews();
   scheduleAutoSave();
 }
 
@@ -1980,42 +1996,63 @@ function escHtml(str) {
 }
 
 function delTourUrl(btn) {
-  const row = btn.closest('.tour-url-row');
-  const urlInput = row.querySelector('.tour-url-input');
-  if (activeTourInputEl === urlInput) {
-    activeTourInputEl = null;
-    document.getElementById('tour-iframe').src = '';
-    document.getElementById('tour-preview').classList.remove('visible');
-  }
-  row.remove();
+  btn.closest('.tour-url-row').remove();
+  renderTourPreviews();
   scheduleAutoSave();
 }
 
-function updateTourPreviewFor(input) {
-  const url = input.value.trim();
+/* プレビューグリッドを再描画する（URL件数に応じて1 or 2カラム切替） */
+function renderTourPreviews() {
   const preview = document.getElementById('tour-preview');
-  const iframe  = document.getElementById('tour-iframe');
-  const note    = document.getElementById('tour-error-note');
-  if (url) {
-    iframe.src = toEmbedUrl(url);
-    preview.classList.add('visible');
-    if (note) note.style.display = 'block';
-  } else {
-    iframe.src = '';
-    preview.classList.remove('visible');
-    if (note) note.style.display = 'none';
-  }
-}
+  const grid    = document.getElementById('tour-preview-grid');
 
-function clearActiveTourPreview() {
-  if (activeTourInputEl) {
-    activeTourInputEl.value = '';
+  // URLが入力されている行だけ収集
+  const entries = Array.from(document.querySelectorAll('#tour-url-list .tour-url-row'))
+    .map(row => ({
+      label: row.querySelector('.tour-url-name-input')?.value.trim() || '',
+      url:   row.querySelector('.tour-url-input')?.value.trim()       || '',
+    }))
+    .filter(e => e.url);
+
+  if (entries.length === 0) {
+    preview.classList.remove('visible', 'multi');
+    grid.innerHTML = '';
+    return;
   }
-  document.getElementById('tour-iframe').src = '';
-  document.getElementById('tour-preview').classList.remove('visible');
-  const note = document.getElementById('tour-error-note');
-  if (note) note.style.display = 'none';
-  scheduleAutoSave();
+
+  const isMulti = entries.length >= 2;
+  preview.classList.toggle('multi', isMulti);
+  preview.classList.add('visible');
+
+  // 既存iframeのsrcリストと比較して差分があるときだけ再描画
+  const existing = Array.from(grid.querySelectorAll('.tour-preview-item'));
+  const needsRebuild =
+    existing.length !== entries.length ||
+    entries.some((e, i) => {
+      const ifr = existing[i]?.querySelector('iframe');
+      return !ifr || ifr.getAttribute('data-src') !== e.url || ifr.getAttribute('data-label') !== e.label;
+    });
+
+  if (!needsRebuild) return;
+
+  grid.innerHTML = '';
+  entries.forEach(e => {
+    const item = document.createElement('div');
+    item.className = 'tour-preview-item';
+    const iframe = document.createElement('iframe');
+    iframe.src = toEmbedUrl(e.url);
+    iframe.setAttribute('data-src', e.url);
+    iframe.setAttribute('data-label', e.label);
+    iframe.allow = 'xr-spatial-tracking; fullscreen';
+    item.appendChild(iframe);
+    if (e.label) {
+      const cap = document.createElement('div');
+      cap.className = 'tour-preview-caption';
+      cap.textContent = e.label;
+      item.appendChild(cap);
+    }
+    grid.appendChild(item);
+  });
 }
 
 function openTourUrlRow(btn) {
@@ -2027,12 +2064,10 @@ function openTourUrlRow(btn) {
 
 function initTourUrlList() {
   const list = document.getElementById('tour-url-list');
-  // ヘッダー以外の既存rowを削除
   Array.from(list.querySelectorAll('.tour-url-row')).forEach(r => r.remove());
   tourUrlCount = 0;
-  activeTourInputEl = null;
-  document.getElementById('tour-iframe').src = '';
-  document.getElementById('tour-preview').classList.remove('visible');
+  document.getElementById('tour-preview').classList.remove('visible', 'multi');
+  document.getElementById('tour-preview-grid').innerHTML = '';
 }
 
 function addPhotoSlot(caption = '') {
@@ -2307,7 +2342,8 @@ function clearForm() {
     document.getElementById(id).value = '';
   });
   initTourUrlList();
-  addTourUrl('', '');
+  addTourUrl('', '', true);
+  renderTourPreviews();
   buildTable();
   document.getElementById('photo-grid').innerHTML = '';
   photoCount = 0;
@@ -2431,10 +2467,11 @@ function restoreData(data) {
   document.getElementById('remarks').value     = data.remarks || '';
   initTourUrlList();
   if (data.tourUrls && data.tourUrls.length > 0) {
-    data.tourUrls.forEach(t => addTourUrl(t.label, t.url));
+    data.tourUrls.forEach(t => addTourUrl(t.label, t.url, true));
   } else {
-    addTourUrl(data.basic?.name || '', '');
+    addTourUrl(data.basic?.name || '', '', true);
   }
+  renderTourPreviews(); // まとめて1回だけ描画
 
   // table
   const tbody = document.getElementById('inspection-body');
@@ -2697,7 +2734,8 @@ async function init() {
   }
 
   if (!hadSave) {
-    addTourUrl(document.getElementById('prop-name').value || '', '');
+    addTourUrl(document.getElementById('prop-name').value || '', '', true);
+    renderTourPreviews();
     buildTable();
     DEFAULT_PHOTO_CAPTIONS.forEach(c => addPhotoSlot(c));
   }
