@@ -2291,6 +2291,7 @@ function loadPhotoFromFile(file, id) {
       document.getElementById(`zone-${id}`)?.classList.add('has-image');
       const hint = document.getElementById(`hint-${id}`);
       if (hint) hint.style.display = 'none';
+      scheduleAutoSave();
     };
     reader.readAsDataURL(blob);
   };
@@ -2681,6 +2682,25 @@ function attachAutoSaveListeners() {
   // 報告事項の入力で問題まとめをリアルタイム更新
   document.getElementById('inspection-body').addEventListener('input', function(e) {
     if (e.target.closest('.col-report')) updateIssuesSummary();
+  });
+  // ページ離脱・リロード前に即時保存（800msデバウンス待ちで保存漏れするのを防ぐ）
+  window.addEventListener('beforeunload', () => {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      try {
+        const isQuota = e => e.name === 'QuotaExceededError' || e.code === 22;
+        try {
+          localStorage.setItem('teiki_report_save', JSON.stringify(collectData()));
+        } catch(e) {
+          if (isQuota(e)) {
+            const data = collectData();
+            data.photos = data.photos.map(p => ({ caption: p.caption, comment: p.comment, src: '' }));
+            localStorage.setItem('teiki_report_save', JSON.stringify(data));
+          }
+        }
+      } catch(e2) { /* 保存失敗は無視 */ }
+    }
   });
 }
 
