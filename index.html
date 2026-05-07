@@ -1314,28 +1314,10 @@
           ☁️ クラウド保存URL（写真込み）
           <span id="cloud-configured-badge" class="cloud-badge" style="display:none">設定済み</span>
         </p>
-        <p class="share-info">写真を含む全データをSupabaseに保存し、URLで共有できます。<br>URLを開くだけで写真込みの内容がそのまま表示されます。</p>
-
-        <!-- Supabase設定フォーム（未設定時・設定変更時に表示） -->
-        <div id="supabase-config-box" class="supabase-config-box">
-          <label for="sb-url-input">Supabase Project URL</label>
-          <input type="text" id="sb-url-input" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
-          <label for="sb-key-input">anon / public key</label>
-          <input type="password" id="sb-key-input" placeholder="eyJhbGci..." autocomplete="off">
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn btn-secondary" onclick="saveSupabaseConfig()" style="font-size:12px;padding:5px 14px">✅ 設定を保存</button>
-            <button id="sb-cancel-btn" class="config-toggle-link" onclick="cancelSupabaseConfig()" style="display:none">キャンセル</button>
-          </div>
-          <p class="supabase-config-note">
-            ※ Supabaseダッシュボード › Settings › API からURLとanon keyを取得してください。<br>
-            ※ 設定値はこのブラウザのlocalStorageに保存されます。<br>
-            ※ URLを受け取る相手も同じSupabaseプロジェクトの設定が必要です。
-          </p>
-        </div>
-        <button id="sb-config-toggle" class="config-toggle-link" onclick="showSupabaseConfig()" style="display:none">⚙️ Supabase設定を変更する</button>
+        <p class="share-info">写真を含む全データをサーバーに保存し、URLで共有できます。<br>URLを開くだけで写真込みの内容がそのまま表示されます。</p>
 
         <button id="share-btn-cloud" class="btn btn-cloud" onclick="doGenerateCloudUrl()"
-                style="width:100%;justify-content:center;padding:11px 20px;display:none">
+                style="width:100%;justify-content:center;padding:11px 20px">
           ☁️ クラウド保存URLを発行する
         </button>
 
@@ -1347,8 +1329,7 @@
           </div>
           <p class="share-note">
             ※ このURLをメール・チャット等で送付してください。<br>
-            ※ 受け取った方がURLを開くと、写真込みで内容が表示されます。<br>
-            ※ データの削除はSupabaseダッシュボードから行ってください。
+            ※ 受け取った方がURLを開くと、写真込みで内容が表示されます。
           </p>
         </div>
       </div>
@@ -1501,11 +1482,7 @@
 
 <script>
 // ==============================
-// ☁️ Supabase設定（管理者が設定してください）
-// ==============================
-// Supabaseダッシュボード > Settings > API から取得
-const SUPABASE_URL      = '';  // 例: https://abcdefgh.supabase.co
-const SUPABASE_ANON_KEY = '';  // 例: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+// ☁️ Supabase認証情報はサーバー側（Vercel環境変数）で管理しています。
 
 // ===== SECURITY: HTML ESCAPE =====
 // innerHTML テンプレートに外部データを挿入する際は必ずこの関数を使用する
@@ -2914,7 +2891,7 @@ function openShareModal() {
   document.getElementById('share-result-area').style.display = 'none';
   document.getElementById('share-btn-text').style.display = '';
   document.getElementById('share-btn-html').disabled = false;
-  applySupabaseConfigUI();
+  document.getElementById('cloud-result-area').style.display = 'none';
 }
 
 function closeShareModal() {
@@ -3093,114 +3070,35 @@ async function generateShareHtmlFile() {
 
 // ===== SUPABASE クラウド保存 =====
 
-function getSupabaseConfig() {
-  // HTMLファイルに直接設定されていればそれを優先
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    return { url: SUPABASE_URL.replace(/\/$/, ''), key: SUPABASE_ANON_KEY };
-  }
-  // なければlocalStorageから取得
-  try { return JSON.parse(localStorage.getItem('teiki_supabase_config') || 'null'); }
-  catch { return null; }
-}
-
-function applySupabaseConfigUI() {
-  const cfg = getSupabaseConfig();
-  const box    = document.getElementById('supabase-config-box');
-  const toggle = document.getElementById('sb-config-toggle');
-  const btn    = document.getElementById('share-btn-cloud');
-  const badge  = document.getElementById('cloud-configured-badge');
-  const cancel = document.getElementById('sb-cancel-btn');
-  const result = document.getElementById('cloud-result-area');
-  if (result) result.style.display = 'none';
-
-  if (cfg && cfg.url && cfg.key) {
-    box.style.display   = 'none';
-    toggle.style.display = 'inline';
-    btn.style.display   = '';
-    badge.style.display = 'inline-block';
-    cancel.style.display = 'none';
-    document.getElementById('sb-url-input').value = cfg.url;
-    document.getElementById('sb-key-input').value = cfg.key;
-  } else {
-    box.style.display   = 'flex';
-    toggle.style.display = 'none';
-    btn.style.display   = 'none';
-    badge.style.display = 'none';
-    cancel.style.display = 'none';
-  }
-}
-
-function showSupabaseConfig() {
-  document.getElementById('supabase-config-box').style.display = 'flex';
-  document.getElementById('sb-config-toggle').style.display   = 'none';
-  document.getElementById('sb-cancel-btn').style.display      = 'inline';
-}
-
-function cancelSupabaseConfig() {
-  document.getElementById('supabase-config-box').style.display = 'none';
-  document.getElementById('sb-config-toggle').style.display   = 'inline';
-  document.getElementById('sb-cancel-btn').style.display      = 'none';
-}
-
-function saveSupabaseConfig() {
-  const url = document.getElementById('sb-url-input').value.trim().replace(/\/$/, '');
-  const key = document.getElementById('sb-key-input').value.trim();
-  if (!url || !key) { alert('URLとanon keyを両方入力してください。'); return; }
-  if (!url.startsWith('https://')) { alert('URLはhttps://で始まる必要があります。'); return; }
-  localStorage.setItem('teiki_supabase_config', JSON.stringify({ url, key }));
-  applySupabaseConfigUI();
-}
-
-function buildSupabaseHeaders(key, extra) {
-  // 新形式キー（sb_publishable_ / sb_secret_）と旧形式JWT両対応
-  const h = { 'Content-Type': 'application/json', ...extra };
-  if (key.startsWith('sb_')) {
-    h['Authorization'] = `Bearer ${key}`;
-    h['apikey'] = key;
-  } else {
-    h['apikey'] = key;
-    h['Authorization'] = `Bearer ${key}`;
-  }
-  return h;
-}
+// Supabase認証情報はサーバー側（/api/report）で管理するため
+// クライアント側の設定関数は不要になりました。
 
 async function saveToSupabase(data) {
-  const cfg = getSupabaseConfig();
-  if (!cfg) throw new Error('Supabaseが設定されていません');
   let res;
   try {
-    res = await fetch(`${cfg.url}/rest/v1/reports`, {
+    res = await fetch('/api/report', {
       method: 'POST',
-      headers: buildSupabaseHeaders(cfg.key, { 'Prefer': 'return=representation' }),
-      body: JSON.stringify({ data })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
   } catch(e) {
-    throw new Error(`接続失敗：URLが正しいか確認してください。\n設定URL: ${cfg.url}\n(${e.message})`);
+    throw new Error(`接続失敗: ${e.message}`);
   }
-  if (!res.ok) {
-    const text = await res.text().catch(() => String(res.status));
-    throw new Error(`保存失敗 (${res.status}): ${text}`);
-  }
-  const [record] = await res.json();
-  return record.id;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `保存失敗 (${res.status})`);
+  return json.id;
 }
 
 async function loadFromSupabase(id) {
-  const cfg = getSupabaseConfig();
-  if (!cfg) throw new Error('Supabaseが設定されていません');
   let res;
   try {
-    res = await fetch(
-      `${cfg.url}/rest/v1/reports?id=eq.${encodeURIComponent(id)}&select=data`,
-      { headers: buildSupabaseHeaders(cfg.key, {}) }
-    );
+    res = await fetch(`/api/report?id=${encodeURIComponent(id)}`);
   } catch(e) {
-    throw new Error(`接続失敗 (${e.message})`);
+    throw new Error(`接続失敗: ${e.message}`);
   }
-  if (!res.ok) throw new Error(`データ取得失敗 (${res.status})`);
-  const rows = await res.json();
-  if (!rows.length) throw new Error('データが見つかりません（IDが無効か削除済みです）');
-  return rows[0].data;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `データ取得失敗 (${res.status})`);
+  return json;
 }
 
 async function doGenerateCloudUrl() {
