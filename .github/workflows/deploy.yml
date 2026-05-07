@@ -23,20 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # デプロイ前にSupabase認証情報をHTMLに注入（GitHubシークレットから）
-      - name: Inject Supabase credentials into HTML
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Supabase secrets not configured, skipping injection..."
-          else
-            sed -i "s|REPLACE_SUPABASE_URL|${SUPABASE_URL}|g" index.html
-            sed -i "s|REPLACE_SUPABASE_ANON_KEY|${SUPABASE_ANON_KEY}|g" index.html
-            echo "Supabase credentials injected successfully."
-          fi
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
