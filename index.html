@@ -1482,7 +1482,9 @@
 
 <script>
 // ==============================
-// ☁️ Supabase認証情報はサーバー側（Vercel環境変数）で管理しています。
+// ☁️ Supabase設定（GitHub Actionsがデプロイ時に自動注入します）
+const SUPABASE_URL      = 'REPLACE_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'REPLACE_SUPABASE_ANON_KEY';
 
 // ===== SECURITY: HTML ESCAPE =====
 // innerHTML テンプレートに外部データを挿入する際は必ずこの関数を使用する
@@ -3070,35 +3072,60 @@ async function generateShareHtmlFile() {
 
 // ===== SUPABASE クラウド保存 =====
 
-// Supabase認証情報はサーバー側（/api/report）で管理するため
-// クライアント側の設定関数は不要になりました。
+
+function getSupabaseConfig() {
+  if (SUPABASE_URL && SUPABASE_URL !== 'REPLACE_SUPABASE_URL' &&
+      SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'REPLACE_SUPABASE_ANON_KEY') {
+    return { url: SUPABASE_URL.replace(/\/$/, ''), key: SUPABASE_ANON_KEY };
+  }
+  return null;
+}
+
+function buildSupabaseHeaders(key) {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+  };
+}
 
 async function saveToSupabase(data) {
+  const cfg = getSupabaseConfig();
+  if (!cfg) throw new Error('Supabaseが設定されていません。管理者にお問い合わせください。');
   let res;
   try {
-    res = await fetch('/api/report', {
+    res = await fetch(`${cfg.url}/rest/v1/reports`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      headers: { ...buildSupabaseHeaders(cfg.key), 'Prefer': 'return=representation' },
+      body: JSON.stringify({ data }),
     });
   } catch(e) {
     throw new Error(`接続失敗: ${e.message}`);
   }
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || `保存失敗 (${res.status})`);
-  return json.id;
+  if (!res.ok) {
+    const text = await res.text().catch(() => String(res.status));
+    throw new Error(`保存失敗 (${res.status}): ${text}`);
+  }
+  const [record] = await res.json();
+  return record.id;
 }
 
 async function loadFromSupabase(id) {
+  const cfg = getSupabaseConfig();
+  if (!cfg) throw new Error('Supabaseが設定されていません。');
   let res;
   try {
-    res = await fetch(`/api/report?id=${encodeURIComponent(id)}`);
+    res = await fetch(
+      `${cfg.url}/rest/v1/reports?id=eq.${encodeURIComponent(id)}&select=data`,
+      { headers: buildSupabaseHeaders(cfg.key) }
+    );
   } catch(e) {
     throw new Error(`接続失敗: ${e.message}`);
   }
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || `データ取得失敗 (${res.status})`);
-  return json;
+  if (!res.ok) throw new Error(`データ取得失敗 (${res.status})`);
+  const rows = await res.json();
+  if (!rows.length) throw new Error('データが見つかりません（IDが無効か削除済みです）');
+  return rows[0].data;
 }
 
 async function doGenerateCloudUrl() {

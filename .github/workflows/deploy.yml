@@ -14,42 +14,19 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      # Supabase認証情報をVercel環境変数に自動同期
-      - name: Sync Supabase secrets to Vercel environment variables
+      # デプロイ前にSupabase認証情報をHTMLに注入（GitHubシークレットから）
+      - name: Inject Supabase credentials into HTML
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # シークレット未設定の場合はスキップ
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Supabase secrets not configured, skipping..."
-            exit 0
+            echo "Supabase secrets not configured, skipping injection..."
+          else
+            sed -i "s|REPLACE_SUPABASE_URL|${SUPABASE_URL}|g" index.html
+            sed -i "s|REPLACE_SUPABASE_ANON_KEY|${SUPABASE_ANON_KEY}|g" index.html
+            echo "Supabase credentials injected successfully."
           fi
-          upsert_env() {
-            local KEY="$1" VAL="$2"
-            # 既存のenv IDを検索
-            ENV_ID=$(curl -sf "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" \
-              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-              | jq -r --arg k "$KEY" '.envs[] | select(.key==$k and (.target | index("production") != null)) | .id' \
-              2>/dev/null | head -1 || true)
-            if [ -n "$ENV_ID" ]; then
-              echo "Updating existing env: $KEY"
-              curl -sf -X PATCH "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env/${ENV_ID}" \
-                -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-                -H "Content-Type: application/json" \
-                -d "{\"value\":\"${VAL}\",\"type\":\"plain\",\"target\":[\"production\"]}" > /dev/null
-            else
-              echo "Creating new env: $KEY"
-              curl -sf -X POST "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env" \
-                -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-                -H "Content-Type: application/json" \
-                -d "{\"key\":\"${KEY}\",\"value\":\"${VAL}\",\"type\":\"plain\",\"target\":[\"production\"]}" > /dev/null
-            fi
-          }
-          upsert_env "SUPABASE_URL" "$SUPABASE_URL"
-          upsert_env "SUPABASE_ANON_KEY" "$SUPABASE_ANON_KEY"
 
       - name: Deploy to Vercel
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
