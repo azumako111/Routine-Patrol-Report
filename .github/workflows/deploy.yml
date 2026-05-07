@@ -1,0 +1,50 @@
+name: GitHub Pages Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # デプロイ前にSupabase認証情報をHTMLに注入（GitHubシークレットから）
+      - name: Inject Supabase credentials into HTML
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Supabase secrets not configured, skipping injection..."
+          else
+            sed -i "s|REPLACE_SUPABASE_URL|${SUPABASE_URL}|g" index.html
+            sed -i "s|REPLACE_SUPABASE_ANON_KEY|${SUPABASE_ANON_KEY}|g" index.html
+            echo "Supabase credentials injected successfully."
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
