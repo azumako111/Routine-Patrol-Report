@@ -2014,7 +2014,7 @@ function renderTourPreviews() {
       label: row.querySelector('.tour-url-name-input')?.value.trim() || '',
       url:   row.querySelector('.tour-url-input')?.value.trim()       || '',
     }))
-    .filter(e => e.url);
+    .filter(e => isSafeHttpUrl(e.url));
 
   if (entries.length === 0) {
     preview.classList.remove('visible', 'multi');
@@ -2063,6 +2063,7 @@ function openTourUrlRow(btn) {
   const row = btn.closest('.tour-url-row');
   const url = row.querySelector('.tour-url-input').value.trim();
   if (!url) { alert('URLを入力してください。'); return; }
+  if (!isSafeHttpUrl(url)) { alert('http:// または https:// で始まるURLを入力してください。'); return; }
   window.open(url, '_blank', 'noopener');
 }
 
@@ -2618,6 +2619,13 @@ function loadFromStorage() {
 }
 
 // ===== ROOM TOUR URL =====
+function isSafeHttpUrl(url) {
+  try {
+    const p = new URL(url).protocol;
+    return p === 'https:' || p === 'http:';
+  } catch(e) { return false; }
+}
+
 function toEmbedUrl(url) {
   try {
     const u = new URL(url);
@@ -3092,12 +3100,14 @@ function buildSupabaseHeaders(key) {
 async function saveToSupabase(data) {
   const cfg = getSupabaseConfig();
   if (!cfg) throw new Error('Supabaseが設定されていません。管理者にお問い合わせください。');
+  // IDをクライアントで生成し return=minimal で保存（anonにSELECT権限を与えないため）
+  const id = crypto.randomUUID();
   let res;
   try {
     res = await fetch(`${cfg.url}/rest/v1/reports`, {
       method: 'POST',
-      headers: { ...buildSupabaseHeaders(cfg.key), 'Prefer': 'return=representation' },
-      body: JSON.stringify({ data }),
+      headers: { ...buildSupabaseHeaders(cfg.key), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id, data }),
     });
   } catch(e) {
     throw new Error(`接続失敗: ${e.message}`);
@@ -3106,8 +3116,7 @@ async function saveToSupabase(data) {
     const text = await res.text().catch(() => String(res.status));
     throw new Error(`保存失敗 (${res.status}): ${text}`);
   }
-  const [record] = await res.json();
-  return record.id;
+  return id;
 }
 
 async function loadFromSupabase(id) {
@@ -3115,17 +3124,18 @@ async function loadFromSupabase(id) {
   if (!cfg) throw new Error('Supabaseが設定されていません。');
   let res;
   try {
-    res = await fetch(
-      `${cfg.url}/rest/v1/reports?id=eq.${encodeURIComponent(id)}&select=data`,
-      { headers: buildSupabaseHeaders(cfg.key) }
-    );
+    res = await fetch(`${cfg.url}/rest/v1/rpc/get_report`, {
+      method: 'POST',
+      headers: buildSupabaseHeaders(cfg.key),
+      body: JSON.stringify({ p_id: id }),
+    });
   } catch(e) {
     throw new Error(`接続失敗: ${e.message}`);
   }
   if (!res.ok) throw new Error(`データ取得失敗 (${res.status})`);
-  const rows = await res.json();
-  if (!rows.length) throw new Error('データが見つかりません（IDが無効か削除済みです）');
-  return rows[0].data;
+  const data = await res.json();
+  if (!data) throw new Error('データが見つかりません（IDが無効か削除済みです）');
+  return data;
 }
 
 async function doGenerateCloudUrl() {
